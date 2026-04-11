@@ -125,6 +125,7 @@ Please note the [teachPress 6.0 Upgrade Information](https://mtrv.wordpress.com/
 == Changelog ==
 
 = 9.0.13 (11.04.2026) =
+* New: [tpcloud, tplist, tpsearch]: New parameter "show_abstract"
 * Bugfix: [tpcite]: Better handling of not existing cite references
 * Bugfix: Fix for CVE-2026-22353
 * Bugfix: Fix for CVE-2026-22483
