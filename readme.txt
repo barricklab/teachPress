@@ -125,9 +125,10 @@ Please note the [teachPress 6.0 Upgrade Information](https://mtrv.wordpress.com/
 == Changelog ==
 
 = 9.0.13 (11.04.2026) =
-* New: [tpcloud, tplist, tpsearch]: New parameter "show_abstract"
+* New: [tpcloud, tplist, tpsearch]: New parameter "show_abstract" (#277)
+* New: [tpcloud, tplist, tpsearch]: More altmentric badge types: donut, medium-donut, large-donut, bar, medium-bar, large-bar (#107) (Thanks to epikentros)
 * Bugfix: [tpcite]: Better handling of not existing cite references
-* Bugfix: Fix for CVE-2026-22353
+* Bugfix: Fix for CVE-2026-22353 (#279)
 * Bugfix: Fix for CVE-2026-22483
 
 = 9.0.12 (07.04.2025) =
