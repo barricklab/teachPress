@@ -40,11 +40,17 @@ class TP_Ajax {
     /**
      * Deletes a document
      * @param int $doc_id           The document ID
+     * @param string $nonce         WP Nonce Key
      * @return boolean
      * @since 5.0.0
      * @access public
      */
-    public static function delete_document( $doc_id ) {
+    public static function delete_document( $doc_id, $nonce ) {
+        // Verify nonce key
+        if ( ! wp_verify_nonce( $nonce, 'verify_teachpress_del_doc' ) ) {
+            return;
+        }
+        
         $doc_id = intval($doc_id);
         $data = TP_Documents::get_document($doc_id);
         if ( $data['path'] !== '' ) {

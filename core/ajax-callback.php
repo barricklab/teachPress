@@ -47,8 +47,9 @@ function tp_ajax_callback () {
          * Works if $_GET['del_document'] is given
          */
         $del_document = ( isset( $_GET['del_document'] ) ) ? intval( $_GET['del_document'] ) : 0;
+        $nonce = ( isset( $_GET['nonce'] ) ) ? intval( $_GET['nonce'] ) : '';
         if ( $del_document !== 0 ) {
-            TP_Ajax::delete_document($del_document);
+            TP_Ajax::delete_document($del_document, $nonce);
         }
 
         /**
