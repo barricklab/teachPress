@@ -296,12 +296,12 @@ function tp_get_memory_usage () {
 }
 
 /**
- * Escapes a HTML tag name. Allowed chars: a-z A-Z 0-9 _
+ * Sanitizes a key name or a comma separated list of key names. Allowed chars: a-z A-Z 0-9 _ - , 
  * @param string $tag_name
  * @since 9.0.13
  */
-function tp_esc_html_tag ($tag_name) {
-   $safe_tag = strtolower( preg_replace( '/[^a-zA-Z0-9_:]/', '', $tag_name ) );
+function tp_sanitize_key ($tag_name) {
+   $safe_tag = strtolower( preg_replace( '/[^a-zA-Z0-9_,\-]/', '', $tag_name ) );
    return $safe_tag;
 }
 

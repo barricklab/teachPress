@@ -435,7 +435,7 @@ class TP_HTML_Publication_Template {
      * @since 6.0.0
      */
     public static function get_single ($row, $all_tags, $settings, $template, $template_settings, $pub_count = 0) {
-        $container_id = ( $settings['container_suffix'] != '' ) ? $row['pub_id'] . '_' . tp_esc_html_tag($settings['container_suffix']) : $row['pub_id'];
+        $container_id = ( $settings['container_suffix'] != '' ) ? $row['pub_id'] . '_' . tp_sanitize_key($settings['container_suffix']) : $row['pub_id'];
         $separator = $template_settings['button_separator'];
         $name = self::prepare_publication_title($row, $settings, $container_id);
         $images = self::handle_images($row, $settings, $template);
