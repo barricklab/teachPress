@@ -1147,7 +1147,12 @@ function tp_links_shortcode ($atts) {
  *      @type string container_suffix      a suffix which can optionally set to modify container IDs in publication lists. It's not set by default.
  *      @type string filter_class          The CSS class for filter/select menus, default: default
  *      @type int show_altmetric_donut     0 (false) or 1 (true), default: 0
- *      @type int show_altmetric_entrx     0 (false) or 1 (true), default: 0
+ *      @type int show_altmetric_entry     0 (false) or 1 (true), default: 0
+ *      @type string show_altmetric_type   Altmetric badge type. Accepted values: 'donut', 'medium-donut',
+ *                                         'large-donut', 'bar', 'medium-bar', 'large-bar', '1', '4'.
+ *                                         Defaults to 'donut' when empty. Default: ''
+ *                                         See: https://badge-docs.altmetric.com/customizations.html#badge-types
+
  *      @type int show_dimensions_badge    0 (false) or 1 (true), default: 0
  *      @type int show_plumx_widget        0 (false) or 1 (true), default: 0
  *      @type int use_jumpmenu             Use filter as jumpmenu (1) or not (0), default: 1
@@ -1211,6 +1216,10 @@ function tp_publist_shortcode ($args) {
         'custom_filter_label'   => '',
         'show_altmetric_donut'  => 0,
         'show_altmetric_entry'  => 0,
+        // Altmetric badge type. Accepted values: 'donut', 'medium-donut', 'large-donut',
+        // 'bar', 'medium-bar', 'large-bar'. Defaults to 'donut' when empty.
+        // See: https://badge-docs.altmetric.com/customizations.html#badge-types
+        'show_altmetric_type'   => '',
         'show_dimensions_badge' => 0,
         'show_plumx_widget'     => 0,
         'use_jumpmenu'          => 1,
@@ -1257,6 +1266,8 @@ function tp_publist_shortcode ($args) {
         'custom_filter_label'   => htmlspecialchars($atts['custom_filter_label']),
         'show_altmetric_entry'  => ($atts['show_altmetric_entry'] == '1') ? true : false,
         'show_altmetric_donut'  => ($atts['show_altmetric_donut'] == '1') ? true : false,
+        // Sanitise the badge type string from the shortcode attribute.
+        'show_altmetric_type'   => sanitize_key( $atts['show_altmetric_type'] ),
         'show_dimensions_badge' => ('1' === $atts['show_dimensions_badge']) ? true : false,
         'show_plumx_widget'     => ('1' === $atts['show_plumx_widget']) ? true : false,
         'use_jumpmenu'          => ( $atts['use_jumpmenu'] == '1' ) ? true : false
@@ -1654,6 +1665,10 @@ function tp_cloud_shortcode($atts) {
         'container_suffix'          => '',
         'show_altmetric_donut'      => 0,
         'show_altmetric_entry'      => 0,
+        // Altmetric badge type. Accepted values: 'donut', 'medium-donut', 'large-donut',
+        // 'bar', 'medium-bar', 'large-bar'. Defaults to 'donut' when empty.
+        // See: https://badge-docs.altmetric.com/customizations.html#badge-types
+        'show_altmetric_type'   => '',
         'show_dimensions_badge'     => 0,
         'show_plumx_widget'         => 0,
         'use_jumpmenu'              => 1,
@@ -1722,6 +1737,10 @@ function tp_list_shortcode($atts){
        'container_suffix'           => '',
        'show_altmetric_donut'       => 0,
        'show_altmetric_entry'       => 0,
+       // Altmetric badge type. Accepted values: 'donut', 'medium-donut', 'large-donut',
+       // 'bar', 'medium-bar', 'large-bar'. Defaults to 'donut' when empty.
+       // See: https://badge-docs.altmetric.com/customizations.html#badge-types
+       'show_altmetric_type'   => '',
        'show_dimensions_badge'      => 0,
        'show_plumx_widget'          => 0,
        'use_jumpmenu'               => 1,
@@ -1787,6 +1806,10 @@ function tp_search_shortcode ($atts) {
        'container_suffix'           => '',
        'show_altmetric_donut'       => 0,
        'show_altmetric_entry'       => 0,
+        // Altmetric badge type. Accepted values: 'donut', 'medium-donut', 'large-donut',
+        // 'bar', 'medium-bar', 'large-bar'. Defaults to 'donut' when empty.
+        // See: https://badge-docs.altmetric.com/customizations.html#badge-types
+        'show_altmetric_type'   => '',
        'show_dimensions_badge'      => 0,
        'show_plumx_widget'          => 0,
        'use_jumpmenu'               => 0,

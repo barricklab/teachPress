@@ -352,8 +352,16 @@ class TP_Publication_Template_API {
         $container_id = $this->data['container_id'];
 
         // div altmetric
-        if ( $settings['show_altmetric_entry']  && $row['doi'] != '' ) {
-            $content .= TP_HTML_Publication_Template::get_info_container( TP_HTML_Publication_Template::prepare_altmetric($row['doi']), 'altmetric', $container_id );
+        // Render the Altmetric badge in the publication entry info container.
+        // The badge type is controlled by the 'show_altmetric_type' shortcode parameter.
+        // Falls back to 'donut' when no type is specified, ensuring backward compatibility.
+        if ( $settings['show_altmetric_entry'] && $row['doi'] !== '' ) {
+            $altm_type = ( ! empty( $settings['show_altmetric_type'] ) ) ? $settings['show_altmetric_type'] : 'donut';
+            $content .= TP_HTML_Publication_Template::get_info_container(
+                TP_HTML_Publication_Template::prepare_altmetric( $row['doi'], $altm_type ),
+                'altmetric',
+                $container_id
+            );
         }
 
         if ( $settings['show_dimensions_badge'] && $row['doi'] != '' ) {
@@ -843,29 +851,31 @@ class TP_HTML_Publication_Template {
         return $end;
     }
 
-    /**
-     * Prepares an altmetric info block
-     * @param string $doi       The DOI number
-     * @return string
-     * @since 3.0.0
-     * @version 2
-     * @access public
-     */
-    public static function prepare_altmetric($doi = '') {
-        $end = '';
-         /**
-         * Add DOI-URL
-         * @since 5.0.0
-         */
-        if ( $doi != '' ) {
-            $doi_url = TEACHPRESS_DOI_RESOLVER . $doi;
-
-            $end .= '<div data-badge-details="right" data-badge-type="large-donut" data-doi="'.$doi .'" data-condensed="true" class="altmetric-embed"></div>';
-        }
-
-        return $end;
+/**
+ * Prepares an Altmetric badge block for a publication entry.
+ *
+ * Generates the HTML embed element for an Altmetric badge. The badge type
+ * can be customised via the $altm_type parameter. If no type is provided,
+ * 'large-donut' is used as the default to preserve backward compatibility.
+ *
+ * For available badge types see:
+ * https://badge-docs.altmetric.com/customizations.html#badge-types
+ *
+ * @param string $doi       The DOI of the publication. Defaults to empty string.
+ * @param string $altm_type The Altmetric badge type to render.
+ *                          Accepted values: 'donut', 'medium-donut', 'large-donut',
+ *                          'bar', 'medium-bar', 'large-bar', '1', '4'.
+ *                          Defaults to 'large-donut'.
+ * @return string           The HTML string for the Altmetric embed, or empty string if no DOI.
+ * @since 3.0.0
+ * @access public
+ */
+public static function prepare_altmetric( $doi = '', $altm_type = 'large-donut' ) {
+    if ( $doi === '' ) {
+        return '';
     }
-
+    return '<div data-badge-details="right" data-badge-type="' . esc_attr( $altm_type ) . '" data-doi="' . esc_attr( $doi ) . '" data-condensed="true" class="altmetric-embed"></div>';
+}
 
 
 
@@ -967,12 +977,16 @@ class TP_HTML_Publication_Template {
         $image = TP_HTML_Publication_Template::handle_image_link ($image, $row, $settings);
 
         // Altmetric / Dimensions / Plumx
-        $altmetric = '';
+        $altmetric  = '';
         $dimensions = '';
-        $plumx = '';
-        
-        if( $settings['show_altmetric_donut']) {
-           $altmetric = '<div class="tp_pub_image_bottom"><div data-badge-type="medium-donut" data-doi="' . $row['doi']  . '" data-condensed="true" data-hide-no-mentions="true" class="altmetric-embed"></div></div>';
+        $plumx      = '';
+
+        // Render the Altmetric badge in the image area (donut position).
+        // The badge type is controlled by the 'show_altmetric_type' shortcode parameter.
+        // Falls back to 'donut' when no type is specified, ensuring backward compatibility.
+        if ( $settings['show_altmetric_donut'] ) {
+            $altm_type = ( ! empty( $settings['show_altmetric_type'] ) ) ? $settings['show_altmetric_type'] : 'donut';
+            $altmetric = '<div class="tp_pub_image_bottom"><div data-badge-type="' . esc_attr( $altm_type ) . '" data-doi="' . esc_attr( $row['doi'] ) . '" data-condensed="true" data-hide-no-mentions="true" class="altmetric-embed"></div></div>';
         }
 
         if ( $settings['show_dimensions_badge'] ) {
