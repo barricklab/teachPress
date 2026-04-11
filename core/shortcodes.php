@@ -1099,7 +1099,7 @@ function tp_links_shortcode ($atts) {
  *      $tsr (STRING)           Full text search
  *
  *
- * @param array $atts {
+ * @param array $args {
  *      @type string user                  the WordPress IDs or login names of on or more users (separated by commas)
  *      @type string tag                   tag IDs (separated by comma)
  *      @type string type                  the publication types you want to show (separated by comma)
@@ -1140,6 +1140,7 @@ function tp_links_shortcode ($atts) {
  *      @type int show_search_filter       0 (false) or 1 (true), default: 1
  *      @type int show_year_filter         0 (false) or 1 (true), default: 1
  *      @type int show_bibtex              Show bibtex container under each entry (1) or not (0), default: 1
+ *      @type int show_abstract            Show bibtex container under each entry (1) or not (0), default: 1
  *      @type int show_comment             Show comment as a container, default: 0
  *      @type string comment_text          Sets the text used for the comment link, if shown. Default: 'Comment'
  *      @type string comment_tooltip       Set the tooltip text for the comment link, if shown. Default: 'Show comment'

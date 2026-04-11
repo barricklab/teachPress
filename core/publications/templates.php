@@ -373,7 +373,7 @@ class TP_Publication_Template_API {
         $content .= TP_HTML_Publication_Template::get_info_container( nl2br( TP_Bibtex::get_single_publication_bibtex($row, $keywords, $settings['convert_bibtex']) ), 'bibtex', $container_id );
 
         // div abstract
-        if ( $row['abstract'] != '' ) {
+        if ( $settings['show_abstract'] && $row['abstract'] != '' ) {
             $content .= TP_HTML_Publication_Template::get_info_container( TP_HTML::prepare_text($row['abstract']), 'abstract', $container_id );
         }
 
@@ -427,7 +427,7 @@ class TP_HTML_Publication_Template {
      * @since 6.0.0
      */
     public static function get_single ($row, $all_tags, $settings, $template, $template_settings, $pub_count = 0) {
-        $container_id = ( $settings['container_suffix'] != '' ) ? $row['pub_id'] . '_' . $settings['container_suffix'] : $row['pub_id'];
+        $container_id = ( $settings['container_suffix'] != '' ) ? $row['pub_id'] . '_' . tp_esc_html_tag($settings['container_suffix']) : $row['pub_id'];
         $separator = $template_settings['button_separator'];
         $name = self::prepare_publication_title($row, $settings, $container_id);
         $images = self::handle_images($row, $settings, $template);
@@ -479,7 +479,7 @@ class TP_HTML_Publication_Template {
         }
 
         // Comment
-        if ( $settings['show_comment'] && $row['comment'] != '' ) {
+        if ( $settings['show_comment'] === true && $row['comment'] != '' ) {
             $link_text = ( $settings['comment_text'] != '' ) ? $settings['comment_text'] : esc_html__('Comment', 'teachpress');
             $link_tooltip = ( $settings['comment_tooltip'] != '' ) ? $settings['comment_tooltip'] : esc_html__('Show comment', 'teachpress');
             $comment = self::get_info_button($link_text, $link_tooltip, 'comment', $container_id) . $separator;
@@ -487,7 +487,7 @@ class TP_HTML_Publication_Template {
         }
 
         // if there is an abstract
-        if ( $row['abstract'] != '' ) {
+        if ( $settings['show_abstract'] === true && $row['abstract'] != '' ) {
             $abstract = self::get_info_button(esc_html__('Abstract','teachpress'), esc_html__('Show abstract','teachpress'), 'abstract', $container_id) . $separator;
             $is_button = true;
         }
@@ -518,7 +518,7 @@ class TP_HTML_Publication_Template {
         }
 
         // load template interface
-        $interface_data = array (
+        $interface_data = [
             'row'               => $row,
             'title'             => $name,
             'images'            => $images,
@@ -529,7 +529,7 @@ class TP_HTML_Publication_Template {
             'keywords'          => $keywords,
             'container_id'      => $container_id,
             'template_settings' => $template_settings
-        );
+        ];
 
         $interface = new TP_Publication_Template_API();
         $interface->set_data($interface_data);
