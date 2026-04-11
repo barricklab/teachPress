@@ -5,7 +5,7 @@
  * Description:         Powerful publication management for WordPress
  * Author:              Michael Winkler
  * Author URI:          http://mtrv.wordpress.com/
- * Version:             9.0.12
+ * Version:             9.0.13
  * Requires at least:   3.9
  * Text Domain:         teachpress
  * Domain Path:         /languages
@@ -18,7 +18,7 @@
 /*
    LICENCE
 
-    Copyright 2008-2025 Michael Winkler
+    Copyright 2008-2026 Michael Winkler
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
