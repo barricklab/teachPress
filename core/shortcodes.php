@@ -1200,6 +1200,7 @@ function tp_publist_shortcode ($args) {
         'show_search_filter'    => 1,
         'show_year_filter'      => 1,
         'show_bibtex'           => 1,
+        'show_abstract'         => 1,
         'show_comment'          => 0,
         'comment_text'          => '',
         'comment_tooltip'       => '',
@@ -1227,7 +1228,7 @@ function tp_publist_shortcode ($args) {
         'image_link'            => htmlspecialchars($atts['image_link']),
         'link_style'            => htmlspecialchars($atts['link_style']),
         'title_ref'             => htmlspecialchars($atts['title_ref']),
-        'html_anchor'           => ( $atts['anchor'] == '1' ) ? '#tppubs' . htmlspecialchars($atts['container_suffix']) : '',
+        'html_anchor'           => ( $atts['anchor'] == '1' ) ? '#tppubs' . tp_esc_html_tag($atts['container_suffix']) : '',
         'date_format'           => htmlspecialchars($atts['date_format']),
         'permalink'             => ( get_option('permalink_structure') ) ? get_permalink() . "?" : get_permalink() . "&amp;",
         'convert_bibtex'        => ( get_tp_option('convert_bibtex') == '1' ) ? true : false,
@@ -1240,6 +1241,7 @@ function tp_publist_shortcode ($args) {
         'show_year_filter'      => ( $atts['show_year_filter'] == '1' ) ? true : false,
         'show_search_filter'    => ( $atts['show_search_filter'] == '1' ) ? true : false,
         'show_bibtex'           => ( $atts['show_bibtex'] == '1' ) ? true : false,
+        'show_abstract'         => ( $atts['show_abstract'] == '1') ? true : false,
         'show_comment'          => ( $atts['show_comment'] == '1') ? true : false,
         'comment_text'          => htmlspecialchars($atts['comment_text']),
         'comment_tooltip'       => htmlspecialchars($atts['comment_tooltip']),
@@ -1248,7 +1250,7 @@ function tp_publist_shortcode ($args) {
         'hide_tags'             => htmlspecialchars($atts['hide_tags']),
         'maxsize'               => intval($atts['maxsize']),
         'minsize'               => intval($atts['minsize']),
-        'container_suffix'      => htmlspecialchars($atts['container_suffix']),
+        'container_suffix'      => tp_esc_html_tag($atts['container_suffix']),
         'filter_class'          => htmlspecialchars($atts['filter_class']),
         'custom_filter'         => htmlspecialchars($atts['custom_filter']),
         'custom_filter_label'   => htmlspecialchars($atts['custom_filter_label']),
@@ -1414,7 +1416,7 @@ function tp_publist_shortcode ($args) {
     $part1 = '';
 
     // anchor
-    $part1 .= '<a name="tppubs" id="tppubs"' . $settings['container_suffix'] . '></a>';
+    $part1 .= '<a name="tppubs" id="tppubs' . $settings['container_suffix'] . '"></a>';
 
     // tag cloud
     if ( $tag_cloud !== '' ) {
@@ -1536,37 +1538,39 @@ function tp_publist_shortcode ($args) {
         // Define page menu
         $menu = '';
         if ( $settings['pagination'] === 1 ) {
-            $menu = tp_page_menu(
-                        array( 'number_entries'     => $number_entries,
-                               'entries_per_page'   => $settings['entries_per_page'],
-                               'current_page'       => $pagination_limits['current_page'],
-                               'entry_limit'        => $pagination_limits['entry_limit'],
-                               'page_link'          => $settings['permalink'],
-                               'link_attributes'    => $link_attributes,
-                               'mode'               => 'bottom',
-                               'before'             => '<div class="tablenav">',
-                               'after'              => '</div>')
-                    );
+            $menu = tp_page_menu( [
+                        'number_entries'     => $number_entries,
+                        'entries_per_page'   => $settings['entries_per_page'],
+                        'current_page'       => $pagination_limits['current_page'],
+                        'entry_limit'        => $pagination_limits['entry_limit'],
+                        'page_link'          => $settings['permalink'],
+                        'link_attributes'    => $link_attributes,
+                        'mode'               => 'bottom',
+                        'before'             => '<div class="tablenav">',
+                        'after'              => '</div>'
+                    ] );
         }
 
 
         $part2 .= $menu;
-        $row_year = TP_Publications::get_years(
-                        array( 'user'               => $sql_parameter['user'],
-                               'type'               => $sql_parameter['type'],
-                               'order'              => 'DESC',
-                               'output_type'        => ARRAY_A ) );
+        $row_year = TP_Publications::get_years( [
+                        'user'               => $sql_parameter['user'],
+                        'type'               => $sql_parameter['type'],
+                        'order'              => 'DESC',
+                        'output_type'        => ARRAY_A 
+                    ] );
 
         $part2 .= TP_Shortcodes::generate_pub_table(
                         $tparray,
                         $template,
-                        array( 'id'                     => '',
-                               'number_publications'    => $tpz,
-                               'headline'               => $settings['headline'],
-                               'years'                  => $row_year,
-                               'colspan'                => $colspan,
-                               'user'                   => $atts['user'],
-                               'sort_list'              => $settings['sort_list'] ) );
+                        [   'id'                     => '',
+                            'number_publications'    => $tpz,
+                            'headline'               => $settings['headline'],
+                            'years'                  => $row_year,
+                            'colspan'                => $colspan,
+                            'user'                   => $atts['user'],
+                            'sort_list'              => $settings['sort_list'] 
+                    ] );
         $part2 .= $menu;
     }
     // If there are no publications founded
