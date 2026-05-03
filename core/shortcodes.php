@@ -1215,7 +1215,8 @@ function tp_publist_shortcode ($args) {
         'custom_filter_label'   => '',
         'show_altmetric_donut'  => 0,
         'show_altmetric_entry'  => 0,
-        // Altmetric badge type. Accepted values: 'donut', 'medium-donut', 'large-donut',
+	'altmetric_position'    => 'none',
+	// Altmetric badge type. Accepted values: 'donut', 'medium-donut', 'large-donut',
         // 'bar', 'medium-bar', 'large-bar'. Defaults to 'donut' when empty.
         // See: https://badge-docs.altmetric.com/customizations.html#badge-types
         'show_altmetric_type'   => '',
@@ -1265,7 +1266,8 @@ function tp_publist_shortcode ($args) {
         'custom_filter_label'   => htmlspecialchars($atts['custom_filter_label']),
         'show_altmetric_entry'  => ( $atts['show_altmetric_entry'] == '1') ? true : false,
         'show_altmetric_donut'  => ( $atts['show_altmetric_donut'] == '1') ? true : false,
-        'show_altmetric_type'   => tp_sanitize_key( $atts['show_altmetric_type'] ),
+	'altmetric_position'    => htmlspecialchars($atts['altmetric_position']),
+	'show_altmetric_type'   => tp_sanitize_key( $atts['show_altmetric_type'] ),
         'show_dimensions_badge' => ( $atts['show_dimensions_badge'] == '1') ? true : false,
         'show_plumx_widget'     => ( $atts['show_plumx_widget'] == '1') ? true : false,
         'use_jumpmenu'          => ( $atts['use_jumpmenu'] == '1' ) ? true : false
@@ -1663,7 +1665,8 @@ function tp_cloud_shortcode($atts) {
         'comment_tooltip'           => '',
         'container_suffix'          => '',
         'show_altmetric_donut'      => 0, // deprecated
-        'show_altmetric_entry'      => 0,
+	'show_altmetric_entry'      => 0,
+	'altmetric_position'        => 'none',
         // Altmetric badge type. Accepted values: 'donut', 'medium-donut', 'large-donut',
         // 'bar', 'medium-bar', 'large-bar'. Defaults to 'donut' when empty.
         // See: https://badge-docs.altmetric.com/customizations.html#badge-types
@@ -1737,6 +1740,7 @@ function tp_list_shortcode($atts){
        'container_suffix'           => '',
        'show_altmetric_donut'       => 0, // deprecated
        'show_altmetric_entry'       => 0,
+       'altmetric_position'         => 'none',
        // Altmetric badge type. Accepted values: 'donut', 'medium-donut', 'large-donut',
        // 'bar', 'medium-bar', 'large-bar'. Defaults to 'donut' when empty.
        // See: https://badge-docs.altmetric.com/customizations.html#badge-types
@@ -1807,6 +1811,7 @@ function tp_search_shortcode ($atts) {
        'container_suffix'           => '',
        'show_altmetric_donut'       => 0, // deprecated
        'show_altmetric_entry'       => 0,
+       'altmetric_position'         => 'none',
         // Altmetric badge type. Accepted values: 'donut', 'medium-donut', 'large-donut',
         // 'bar', 'medium-bar', 'large-bar'. Defaults to 'donut' when empty.
         // See: https://badge-docs.altmetric.com/customizations.html#badge-types

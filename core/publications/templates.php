@@ -981,13 +981,14 @@ public static function prepare_altmetric( $doi = '', $altm_type = 'large-donut' 
         $dimensions = '';
         $plumx      = '';
 
+	// JEB - modified so altmetric can be outside of image area
         // Render the Altmetric badge in the image area (donut position).
         // The badge type is controlled by the 'show_altmetric_type' shortcode parameter.
         // Falls back to 'donut' when no type is specified, ensuring backward compatibility.
-        if ( $settings['show_altmetric_donut'] ) {
-            $altm_type = ( ! empty( $settings['show_altmetric_type'] ) ) ? $settings['show_altmetric_type'] : 'donut';
-            $altmetric = '<div class="tp_pub_image_bottom"><div data-badge-type="' . esc_attr( $altm_type ) . '" data-doi="' . esc_attr( $row['doi'] ) . '" data-condensed="true" data-hide-no-mentions="true" class="altmetric-embed"></div></div>';
-        }
+	//if ( $settings['show_altmetric_donut'] ) {
+        //    $altm_type = ( ! empty( $settings['show_altmetric_type'] ) ) ? $settings['show_altmetric_type'] : 'donut';
+        //    $altmetric = '<div class="tp_pub_image_bottom"><div data-badge-type="' . esc_attr( $altm_type ) . '" data-doi="' . esc_attr( $row['doi'] ) . '" data-condensed="true" data-hide-no-mentions="true" class="altmetric-embed"></div></div>';
+        //}
 
         if ( $settings['show_dimensions_badge'] ) {
             $dimensions = '<span class="__dimensions_badge_embed__" data-doi="' . urlencode( $row['doi'] ) . '"></span>';
@@ -999,17 +1000,23 @@ public static function prepare_altmetric( $doi = '', $altm_type = 'large-donut' 
 
         // left position
         if ( $settings['image'] === 'left' ) {
-            $return['left'] = $template->get_image($image . $altmetric . $dimensions . $plumx, 'left', 'width="' . $settings['pad_size'] . '"');
+            $return['left'] = $template->get_image($image . $dimensions . $plumx, 'left', 'width="' . $settings['pad_size'] . '"');
         }
 
         // right position
         if ( $settings['image'] === 'right' ) {
-            $return['right'] = $template->get_image($image . $altmetric . $dimensions . $plumx, 'right', 'width="' . $settings['pad_size'] . '"');
+            $return['right'] = $template->get_image($image . $dimensions . $plumx, 'right', 'width="' . $settings['pad_size'] . '"');
         }
 
         // bottom position
         if ( $settings['image'] === 'bottom' ) {
-            $return['bottom'] = $template->get_image($image . $altmetric . $dimensions . $plumx, 'bottom');
+            $return['bottom'] = $template->get_image($image . $dimensions . $plumx, 'bottom');
+	}
+
+	// JEB - modified Altmetric donut additions
+        if( $settings['show_altmetric_donut'] ) {
+          $altmetric = '<div class="tp_pub_image_' . $settings['altmetric_position'] . '"><div data-badge-type="medium-donut" data-doi="' . $row['doi']  . '" data-condensed="true" data-hide-no-mentions="true" class="altmetric-embed"></div></div>';
+          $return[$settings['altmetric_position']] = $return[$settings['altmetric_position']] . $altmetric;
         }
 
         return $return;
