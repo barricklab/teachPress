@@ -17,9 +17,9 @@ class TP_Template_2021 implements TP_Publication_Template {
                       'author'              => 'Michael Winkler',
                       'version'             => '1.0',
                       'button_separator'    => ' | ',
-                      'menu_label_tags'     => __('Tags') . ': ',
-                      'menu_label_links'    => __('Links','teachpress') . ': ',
-                      'meta_label_in'       => __('In','teachpress') . ': ',
+                      'menu_label_tags'     => esc_html__('Tags') . ': ',
+                      'menu_label_links'    => esc_html__('Links','teachpress') . ': ',
+                      'meta_label_in'       => esc_html__('In','teachpress') . ': ',
                       'citation_style'      => 'teachPress'
         );
     }
@@ -41,7 +41,8 @@ class TP_Template_2021 implements TP_Publication_Template {
      * @return string
      */
     public function get_headline ($content, $args = array()) {
-        return '<h3 class="tp_h3" id="tp_h3_' . esc_attr($content) .'">' . $content . '</h3>';
+        $id = ( isset( $args['id'] ) ) ? $args['id'] : $content;
+        return '<h3 class="tp_h3" id="tp_h3_' . esc_attr($id) .'">' . $content . '</h3>';
     }
     
     /**
@@ -51,7 +52,8 @@ class TP_Template_2021 implements TP_Publication_Template {
      * @return string
      */
     public function get_headline_sl ($content, $args = array()) {
-        return '<h4 class="tp_h4" id="tp_h4_' . esc_attr($content) .'">' . $content . '</h4>';
+        $id = ( isset( $args['id'] ) ) ? $args['id'] : $content;
+        return '<h4 class="tp_h4" id="tp_h4_' . esc_attr($id) .'">' . $content . '</h4>';
     }
     
     /**
@@ -90,7 +92,12 @@ class TP_Template_2021 implements TP_Publication_Template {
         $s .= $interface->get_images('left');
         $s .= '<div class="tp_pub_info">';
         $s .= $interface->get_author('<p class="tp_pub_author">', '</p>');
-        $s .= '<p class="tp_pub_title">' . $interface->get_title() . ' ' . $interface->get_type() . ' ' . $interface->get_label('status', array('forthcoming') ) . '</p>';
+        $s .= '<p class="tp_pub_title">' . $interface->get_title();
+        $award = $interface->get_award(true);
+        if ($award != ""){
+            $s .= ' ' . $award;
+        }
+        $s .= ' ' . $interface->get_type() . ' ' . $interface->get_label('status', array('forthcoming') ) . '</p>';
         $s .= '<p class="tp_pub_additional">' . $interface->get_meta() . '</p>';
         $s .= '<p class="tp_pub_menu">' . $interface->get_menu_line() . '</p>';
         $s .= $interface->get_infocontainer();

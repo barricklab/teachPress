@@ -29,6 +29,14 @@ class TP_Bibtex_Import {
         // create import info
         $import_id = ( $test === false ) ? tp_publication_imports::add_import() : 0;
         
+        // if first lines are empty, remove them, otherwise import won't find any entries
+        $lines = $array = preg_split("/\r\n|\n|\r/", $input);
+        if ( $lines !== false ) {
+            $lines = array_filter($lines, function($l) { $l = trim($l);
+                                                         return strlen($l) > 0; });
+            $input = implode("\n", $lines);
+        }
+        
         // Init bibtexParse
         $input = TP_Bibtex::convert_bibtex_to_utf8($input);
         $parse = NEW BIBTEXPARSE();
@@ -39,6 +47,7 @@ class TP_Bibtex_Import {
         $parse->extractEntries();
         
         list($preamble, $strings, $entries, $undefinedStrings) = $parse->returnArrays();
+        
         $max = count( $entries );
         // print_r($undefinedStrings);
         // print_r($entries);
@@ -53,6 +62,7 @@ class TP_Bibtex_Import {
             $entries[$i]['tppubtype'] = array_key_exists('tppubtype', $entries[$i]) === true ? $entries[$i]['tppubtype'] : '';
             $entries[$i]['pubstate'] = array_key_exists('pubstate', $entries[$i]) === true ? $entries[$i]['pubstate'] : '';
             $entries[$i]['journal'] = array_key_exists('journal', $entries[$i]) === true ? $entries[$i]['journal'] : '';
+            $entries[$i]['annote'] = array_key_exists('annote', $entries[$i]) === true ? $entries[$i]['annote'] : '';
             $entries[$i]['import_id'] = $import_id;
             
             // for the date of publishing
@@ -74,6 +84,11 @@ class TP_Bibtex_Import {
             // consider old location fields
             if ( $entries[$i]['location'] != '' ) {
                 $entries[$i]['address'] = $entries[$i]['location'];
+            }
+            
+            // consider annote field and use it as comment
+            if ( $entries[$i]['annote'] != '' ) {
+                $entries[$i]['comment'] = $entries[$i]['annote'];
             }
             
             // for author / editor
@@ -150,7 +165,7 @@ class TP_Bibtex_Import {
         }
         if ( $settings['overwrite'] === false || $check === false ) {
             $tags = ( $settings['ignore_tags'] === true ) ? '' : $tags;
-            $entry['entry_id'] = TP_Publications::add_publication($entry, $tags, '');
+            $entry['entry_id'] = TP_Publications::add_publication($entry, $tags);
         }
         return $entry['entry_id'];
     }
@@ -181,6 +196,7 @@ class TP_Bibtex_Import {
     protected static function set_date_of_publishing ($entry) {
         $entry['month'] = array_key_exists('month', $entry) === true ? self::parse_month($entry['month']) : '';
         $entry['day'] = array_key_exists('day', $entry) === true ? $entry['day'] : '';
+        $entry['date'] = array_key_exists('date', $entry) === true ? $entry['date'] : '';
         // if complete date is given
         if ( $entry['date'] !== '' ) {
             $entry['date'] = $entry['date'];

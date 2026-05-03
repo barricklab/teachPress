@@ -12,9 +12,9 @@
 function tp_pub_rss_feed_func () {
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
     $tag = isset($_GET['tag']) ? intval($_GET['tag']) : 0;
-    $url = (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . esc_url($_SERVER['REQUEST_URI']);
+    $url = ( isset($_SERVER['HTTPS']) ? 'https' : 'http' ) . '://' . escl_url($_SERVER['HTTP_HOST']) . esc_url($_SERVER['REQUEST_URI']);
     header("Content-Type: application/xml;");
-    echo '<?xml version="1.0" encoding="'.get_option('blog_charset').'"?'.'>' . chr(13) . chr(10);
+    echo '<?xml version="1.0" encoding="' . get_option('blog_charset') . '"?'.'>' . chr(13) . chr(10);
     echo '<rss version="2.0"
             xmlns:content="http://purl.org/rss/1.0/modules/content/"
             xmlns:wfw="http://wellformedweb.org/CommentAPI/"
@@ -34,12 +34,12 @@ function tp_pub_rss_feed_func () {
             <copyright>' . get_bloginfo('name') . '</copyright>
             <pubDate>' . date('r') . '</pubDate>
             <dc:creator>' . get_bloginfo('name') . '</dc:creator>' . chr(13) . chr(10);
-    $row = TP_Publications::get_publications(
-                array('user' => $id, 
-                      'tag' => $tag,
-                      'limit' => '0,30',
-                      'output_type' => ARRAY_A)
-            );
+    $row = TP_Publications::get_publications([
+                'user'        => $id, 
+                'tag'         => $tag,
+                'limit'       => '0,30',
+                'output_type' => ARRAY_A
+            ]);
     foreach ($row as $row) {
 
         // prepare url
@@ -56,7 +56,7 @@ function tp_pub_rss_feed_func () {
 
         // prepare author name
         if ( $row['type'] === 'collection' || ( $row['author'] === '' && $row['editor'] !== '' ) ) {
-            $all_authors = str_replace(' and ', ', ', TP_HTML::convert_special_chars( $row['editor'] ) ) . ' (' . __('Ed.','teachpress') . ')';
+            $all_authors = str_replace(' and ', ', ', TP_HTML::convert_special_chars( $row['editor'] ) ) . ' (' . esc_html__('Ed.','teachpress') . ')';
         }
         else {
             $all_authors = str_replace(' and ', ', ', TP_HTML::convert_special_chars( $row['author'] ) );
@@ -69,7 +69,7 @@ function tp_pub_rss_feed_func () {
             'editor_name'       => 'simple',
             'editor_separator'  => ',',
             'style'             => 'simple',
-            'meta_label_in'     => __('In','teachpress') . ': ',
+            'meta_label_in'     => esc_html__('In','teachpress') . ': ',
             'use_span'          => false
         );
         echo '
@@ -121,6 +121,7 @@ function tp_pub_bibtex_feed_func () {
  */
 function tp_export_feed_func() {
     $key = isset ( $_GET['key'] ) ? $_GET['key'] : '';
+
     // Export single publication
     if ( $key != '' ) {
         header('Content-Type: text/plain; charset=utf-8' );
@@ -133,6 +134,8 @@ function tp_export_feed_func() {
         $course_id = isset ( $_GET['course_id'] ) ? intval($_GET['course_id']) : 0;
         $user_id = isset ( $_GET['tp_user'] ) ? intval($_GET['tp_user']) : 0;
         $format = isset ( $_GET['tp_format'] ) ?  htmlspecialchars($_GET['tp_format']) : '';
+        $private_comment = isset ( $_GET['tp_private_comment'] ) ? true : false;
+        $convert_bibtex = isset ( $_GET['tp_convert_bibtex'] ) ? true : false;
         $sel = isset ( $_GET['tp_sel'] ) ?  htmlspecialchars($_GET['tp_sel']) : '';
         $filename = 'teachpress_course_' . $course_id . '_' . date('dmY');
 
@@ -152,23 +155,23 @@ function tp_export_feed_func() {
         // Export publication lists
         if ( $type === 'pub' ) {
             $filename = 'teachpress_pub_' . date('dmY');
-            $encoding = ( get_tp_option('convert_bibtex') == '1' ) ? 'Cp1252' : 'UTF-8';
+            $encoding = ( $convert_bibtex == true ) ? 'Cp1252' : 'UTF-8';
             if ( $format === 'bib' ) {
                 header('Content-Type: text/plain; charset=utf-8' );
                 header("Content-Disposition: attachment; filename=" . $filename . ".bib");
                 echo '% This file was created with teachPress ' . get_tp_version() . chr(13) . chr(10);
                 echo '% Encoding: ' . $encoding . chr(13) . chr(10) . chr(13) . chr(10);
                 if ( $sel == '' ) {
-                    TP_Export::get_publications($user_id);
+                    TP_Export::get_publications($user_id,'bibtex', $convert_bibtex, $private_comment);
                 }
                 else {
-                    TP_Export::get_selected_publications($sel);
+                    TP_Export::get_selected_publications($sel,'bibtex', $convert_bibtex, $private_comment);
                 }
             }
             if ( $format === 'txt' ) {
                 header('Content-Type: text/plain; charset=utf-8' );
                 header("Content-Disposition: attachment; filename=" . $filename . ".txt");
-                TP_Export::get_publications($user_id,'bibtex');
+                TP_Export::get_publications($user_id,'bibtex', false, $private_comment);
             }
             if ( $format === 'rtf' ) {
                 header('Content-Type: text/plain; charset=utf-8' );

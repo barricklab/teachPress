@@ -36,8 +36,15 @@ class TP_Publications {
      */
     public static function get_publication_by_key($key, $output_type = OBJECT) {
         global $wpdb;
+        
+        // Check if bibtex key has no spaces
+        if ( strpos($key, ' ') !== false ) {
+            $key = str_replace(' ', '', $key);
+        }
+        
         $key = esc_sql(htmlspecialchars($key));
         $result = $wpdb->get_row("SELECT *, DATE_FORMAT(date, '%Y') AS year FROM " . TEACHPRESS_PUB . " WHERE `bibtex` = '$key'", $output_type);
+        
         return $result;
     }
     
@@ -53,6 +60,7 @@ class TP_Publications {
      *      @type string author_id              Author IDs (separated by comma)
      *      @type string import_id              Import IDs (separated by comma)
      *      @type string year                   Years (separated by comma)
+     *      @type string years_between          start/end year separated by comma, use 0 for unlimited
      *      @type string author                 Author name (separated by comma)
      *      @type string editor                 Editor name (separated by comma)
      *      @type string exclude                The ids of the publications you want to exclude (separated by comma)
@@ -74,11 +82,14 @@ class TP_Publications {
         $defaults = array(
             'user'                      => '',
             'type'                      => '',
+            'award'                     => '',
             'tag'                       => '',
+            'tag_name'                  => '',
             'key'                       => '',
             'author_id'                 => '', 
             'import_id'                 => '',
             'year'                      => '',
+            'years_between'             => '',
             'author'                    => '',
             'editor'                    => '',
             'include'                   => '',
@@ -98,24 +109,24 @@ class TP_Publications {
         // define all things for meta data integration
         $joins = '';
         $selects = '';
-        $meta_fields = $wpdb->get_results("SELECT variable FROM " . TEACHPRESS_SETTINGS . " WHERE category = 'teachpress_pub'", ARRAY_A);
+        $meta_fields = $wpdb->get_results("SELECT variable FROM " . TEACHPRESS_SETTINGS . " WHERE `category` = 'teachpress_pub'", ARRAY_A);
         if ( !empty($meta_fields) ) {
             $i = 1;
             foreach ($meta_fields as $field) {
                 $table_id = 'm' . $i; 
                 $selects .= ', ' . $table_id .'.meta_value AS ' . $field['variable'];
-                $joins .= ' LEFT JOIN ' . TEACHPRESS_PUB_META . ' ' . $table_id . " ON ( " . $table_id . ".pub_id = p.pub_id AND " . $table_id . ".meta_key = '" . $field['variable'] . "' ) ";
+                $joins .= ' LEFT JOIN ' . TEACHPRESS_PUB_META . ' ' . $table_id . " ON ( " . $table_id . ".pub_id = p.pub_id AND " . $table_id . ".meta_key = '" . esc_sql($field['variable']) . "' ) ";
                 $i++;
             }
         }
 
         // define basics
-        $select = "SELECT DISTINCT p.pub_id, p.title, p.type, p.bibtex, p.author, p.editor, p.date, DATE_FORMAT(p.date, '%Y') AS year, p.urldate, p.isbn, p.url, p.booktitle, p.issuetitle, p.journal, p.volume, p.number, p.pages, p.publisher, p.address, p.edition, p.chapter, p.institution, p.organization, p.school, p.series, p.crossref, p.abstract, p.howpublished, p.key, p.techtype, p.note, p.is_isbn, p.image_url, p.image_target, p.image_ext, p.doi, p.rel_page, p.status, p.added, p.modified, p.import_id $selects FROM " . TEACHPRESS_PUB . " p $joins ";
+        $select = "SELECT DISTINCT p.pub_id, p.title, p.type, p.award, p.bibtex, p.author, p.editor, p.date, DATE_FORMAT(p.date, '%Y') AS year, p.urldate, p.isbn, p.url, p.booktitle, p.issuetitle, p.journal, p.issue, p.volume, p.number, p.pages, p.publisher, p.address, p.edition, p.chapter, p.institution, p.organization, p.school, p.series, p.crossref, p.abstract, p.howpublished, p.key, p.techtype, p.note, p.comment, p.is_isbn, p.image_url, p.image_target, p.image_ext, p.doi, p.rel_page, p.status, p.added, p.modified, p.import_id $selects FROM " . TEACHPRESS_PUB . " p $joins ";
         $select_for_count = "SELECT DISTINCT p.pub_id, DATE_FORMAT(p.date, '%Y') AS year FROM " . TEACHPRESS_PUB . " p $joins ";
         $join = '';
 
         // exclude publications via tag_id
-        if ( $atts['exclude_tags'] != '' ) {
+        if ( !empty($atts['exclude_tags']) ) {
             $extend = '';
             $exclude_tags = TP_DB_Helpers::generate_where_clause($atts['exclude_tags'], "tag_id", "OR", "=");
             $exclude_publications = $wpdb->get_results("SELECT DISTINCT pub_id FROM " . TEACHPRESS_RELATION . " WHERE $exclude_tags ORDER BY pub_id ASC", ARRAY_A);
@@ -126,19 +137,19 @@ class TP_Publications {
         }
 
         // additional joins
-        if ( $atts['user'] != '' ) {
+        if ( !empty($atts['user']) ) {
             $join .= "INNER JOIN " . TEACHPRESS_USER . " u ON u.pub_id = p.pub_id ";
         }
-        if ( $atts['tag'] != '' ) {
+        if ( !empty($atts['tag']) || !empty($atts['tag_name']) ) {
             $join .= "INNER JOIN " . TEACHPRESS_RELATION . " b ON p.pub_id = b.pub_id INNER JOIN " . TEACHPRESS_TAGS . " t ON t.tag_id = b.tag_id ";
         }
-        if ( $atts['author_id'] != '' ) {
+        if ( !empty($atts['author_id'] ) ) {
             $join .= "INNER JOIN " . TEACHPRESS_REL_PUB_AUTH . " r ON p.pub_id = r.pub_id ";
         }
 
         // define order_by clause
         $order = '';
-        $array = explode(",", esc_sql( $atts['order'] ) );
+        $array = explode(",", TP_DB_Helpers::validate_qualifier( $atts['order'], $defaults['order'] ) );
         foreach($array as $element) {
             $element = trim($element);
             // order by year
@@ -169,11 +180,13 @@ class TP_Publications {
         $nwhere[] = TP_DB_Helpers::generate_where_clause($atts['type'], "p.type", "OR", "=");
         $nwhere[] = TP_DB_Helpers::generate_where_clause($atts['user'], "u.user", "OR", "=");
         $nwhere[] = TP_DB_Helpers::generate_where_clause($atts['tag'], "b.tag_id", "OR", "=");
+        $nwhere[] = TP_DB_Helpers::generate_where_clause($atts['tag_name'], "t.name", "OR", "=");
         $nwhere[] = TP_DB_Helpers::generate_where_clause($atts['key'], "p.bibtex", "OR", "=");
-        $nwhere[] = TP_DB_Helpers::generate_where_clause($atts['author_id'], "r.author_id", "OR", "=");
+        $nwhere[] = TP_DB_Helpers::compose_clause( array(
+                    TP_DB_Helpers::generate_where_clause($atts['author_id'], "r.author_id", "OR", "="),
+                    TP_DB_Helpers::generate_where_clause($atts['author'], "p.author", "OR", "LIKE", '%')), "OR", '' );
         $nwhere[] = TP_DB_Helpers::generate_where_clause($atts['import_id'], "p.import_id", "OR", "=");
         $nwhere[] = TP_DB_Helpers::generate_where_clause($atts['editor'], "p.editor", "OR", "LIKE", '%');
-        $nwhere[] = TP_DB_Helpers::generate_where_clause($atts['author'], "p.author", "OR", "LIKE", '%');
         $nwhere[] = ( $atts['author_id'] != '' && $atts['include_editor_as_author'] === false) ? " AND ( r.is_author = 1 ) " : null;
         $nwhere[] = ( $search != '') ? $search : null;
         
@@ -196,23 +209,27 @@ class TP_Publications {
         
         // HAVING clause
         $having = '';
-        if ( $atts['year'] != '' && $atts['year'] !== '0' ) {
+        if ( !empty($atts['year']) ) {
             $having = ' HAVING ' . TP_DB_Helpers::generate_where_clause($atts['year'], "year", "OR", "=");
+        }
+        if ( empty($atts['year']) && !empty($atts['years_between']) ) {
+            $having = ' HAVING ' . TP_DB_Helpers::generate_between_clause($atts['years_between'], "year");
         }
         
         // LIMIT clause
-        $limit = ( $atts['limit'] != '' ) ? 'LIMIT ' . esc_sql($atts['limit']) : '';
+        $limit = ( !empty($atts['limit']) ) ? 'LIMIT ' . TP_DB_Helpers::validate_qualifier($atts['limit']) : '';
 
         // End
         if ( $count !== true ) {
             $sql = $select . $join . $where . $having . " ORDER BY $order $limit";
+            // var_dump($args);
+            // get_tp_message($sql,'red');
         }
         else {
+
             $sql = "SELECT COUNT( pub_id ) AS `count` FROM ( $select_for_count $join $where $having) p ";
         }
-        
-        // print_r($args);
-        // get_tp_message($sql,'red');
+
         $sql = ( $count != true ) ? $wpdb->get_results($sql, $atts['output_type']): $wpdb->get_var($sql);
         return $sql;
     }
@@ -279,7 +296,7 @@ class TP_Publications {
         $atts = wp_parse_args( $args, $defaults );
 
         global $wpdb;
-        $output_type = esc_sql($atts['output_type']);
+        $output_type = $atts['output_type'];
         $include = TP_DB_Helpers::generate_where_clause($atts['include'], "type", "OR", "=");
         $exclude = TP_DB_Helpers::generate_where_clause($atts['exclude'], "type", "OR", "!=");
         $user = TP_DB_Helpers::generate_where_clause($atts['user'], "u.user", "OR", "=");
@@ -316,6 +333,7 @@ class TP_Publications {
             'type'          => '',
             'user'          => '',
             'include'       => '',
+            'years_between' => '',
             'order'         => 'ASC',
             'output_type'   => OBJECT
         ); 
@@ -337,9 +355,12 @@ class TP_Publications {
         if ( $atts['include'] != '' && $atts['include'] !== '0' ) {
             $having = ' HAVING ' . TP_DB_Helpers::generate_where_clause($atts['include'], "year", "OR", "=");
         }
+        if ( $atts['include'] === '' && $atts['years_between'] != '' ) {
+            $having = ' HAVING ' . TP_DB_Helpers::generate_between_clause($atts['years_between'], "year");
+        }
 
         // END
-        $order = esc_sql($atts['order']);
+        $order = TP_DB_Helpers::validate_qualifier($atts['order']);
         $result = $wpdb->get_results("SELECT DISTINCT DATE_FORMAT(p.date, '%Y') AS year FROM " . TEACHPRESS_PUB . " p $join $where $having ORDER BY year $order", $atts['output_type']);
         return $result;
     }
@@ -348,11 +369,11 @@ class TP_Publications {
      * Adds a publication
      * @param array $data       An associative array of publication data (title, type, bibtex, author, editor,...)
      * @param string $tags      An associative array of tags
-     * @param array $bookmark   An associative array of bookmark IDs
+     * @param array $bookmark   An array of bookmark IDs
      * @return int              The ID of the new publication
      * @since 5.0.0
     */
-    public static function add_publication($data, $tags, $bookmark) {
+    public static function add_publication($data, $tags, $bookmark = array() ) {
         global $wpdb;
         $defaults = self::get_default_fields();
         $post_time = current_time('mysql',0);
@@ -372,34 +393,36 @@ class TP_Publications {
 
         $wpdb->insert( 
             TEACHPRESS_PUB, 
-            array( 
-                'title'         => ( $data['title'] === '' ) ? '[' . __('No title','teachpress') . ']' : stripslashes($data['title']),
-                'type'          => $data['type'],
+            array(
                 'bibtex'        => stripslashes( TP_Publications::generate_unique_bibtex_key($data['bibtex']) ),
+                'type'          => $data['type'],
+                'award'         => $data['award'],
+                'title'         => ( $data['title'] === '' ) ? '[' . esc_html__('No title','teachpress') . ']' : stripslashes($data['title']),
                 'author'        => stripslashes($data['author']),
                 'editor'        => stripslashes($data['editor']),
                 'isbn'          => $data['isbn'],
                 'url'           => $data['url'],
-                'date'          => ( $data['date'] == 'JJJJ-MM-TT' ) ? '0000-00-00' : $data['date'],
-                'urldate'       => ( $data['urldate'] == 'JJJJ-MM-TT' ) ? '0000-00-00' : $data['urldate'],
+                'date'          => preg_match('/\d\d\d\d-\d\d-\d\d/', $data['date']) === 1 ? $data['date'] : '0000-00-00',
+                'urldate'       => preg_match('/\d\d\d\d-\d\d-\d\d/', $data['urldate']) === 1 ? $data['urldate'] : '0000-00-00',
                 'booktitle'     => stripslashes($data['booktitle']),
                 'issuetitle'    => stripslashes($data['issuetitle']),
                 'journal'       => stripslashes($data['journal']),
-                'volume'        => $data['volume'],
-                'number'        => $data['number'],
-                'pages'         => $data['pages'],
+                'issue'         => stripslashes($data['issue']),
+                'volume'        => stripslashes($data['volume']),
+                'number'        => stripslashes($data['number']),
+                'pages'         => stripslashes($data['pages']),
                 'publisher'     => stripslashes($data['publisher']),
                 'address'       => stripslashes($data['address']),
-                'edition'       => $data['edition'],
-                'chapter'       => $data['chapter'],
+                'edition'       => stripslashes($data['edition']),
+                'chapter'       => stripslashes($data['chapter']),
                 'institution'   => stripslashes($data['institution']),
                 'organization'  => stripslashes($data['organization']),
                 'school'        => stripslashes($data['school']),
-                'series'        => $data['series'],
-                'crossref'      => $data['crossref'],
+                'series'        => stripslashes($data['series']),
+                'crossref'      => stripslashes($data['crossref']),
                 'abstract'      => stripslashes($data['abstract']),
                 'howpublished'  => stripslashes($data['howpublished']),
-                'key'           => $data['key'],
+                'key'           => stripslashes($data['key']),
                 'techtype'      => stripslashes($data['techtype']),
                 'comment'       => stripslashes($data['comment']),
                 'note'          => stripslashes($data['note']),
@@ -413,11 +436,17 @@ class TP_Publications {
                 'added'         => $post_time,
                 'modified'      => $post_time,
                 'import_id'     => $data['import_id'] ),
-            array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%s', '%d' ) );
+            array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%s', '%d' ) );
         $pub_id = $wpdb->insert_id;
+        
+        // Error message for the user:
+        if ( $pub_id === 0 && $wpdb->last_error !== '' ) {
+            get_tp_message($data['title'] . ': <ul><li>' . $wpdb->last_error . '</li></ul>', 'red');
+            //var_dump($data);
+        }
 
         // Bookmarks
-        if ( $bookmark != '' ) {
+        if ( !empty( $bookmark ) ) {
             $max = count( $bookmark );
             for( $i = 0; $i < $max; $i++ ) {
                if ($bookmark[$i] != '' || $bookmark[$i] != 0) {
@@ -454,12 +483,14 @@ class TP_Publications {
      * Edit a publication
      * @param int $pub_id           ID of the publication
      * @param array $data           An associative array with publication data
-     * @param array $bookmark       An array with WP_USER_ids
-     * @param array $delbox         An array with tag IDs you want to delete
-     * @param string $tags          A string of Tags seperate by comma
+     * @param string $new_tags      A string of Tags seperate by comma
+     * @param array $del_tags       An array with tag IDs you want to delete
+     * @param array $new_bookmarks  An array with WP_USER_ids for which you want to set a bookmark
+     * @param array $del_bookmarks  An array with WP_USER_ids for which you want to delete the bookmark
+     * 
      * @since 5.0.0
     */
-   public static function change_publication($pub_id, $data, $bookmark, $delbox, $tags) {
+   public static function change_publication($pub_id, $data, $new_tags = '', $del_tags = array(), $new_bookmarks = array(), $del_bookmarks = array() ) {
         global $wpdb;
         $post_time = current_time('mysql',0);
         $pub_id = intval($pub_id);
@@ -485,9 +516,10 @@ class TP_Publications {
         $wpdb->update( 
                 TEACHPRESS_PUB, 
                 array( 
-                    'title'         => stripslashes($data['title']), 
-                    'type'          => $data['type'], 
                     'bibtex'        => stripslashes($data['bibtex']), 
+                    'type'          => $data['type'], 
+                    'award'         => $data['award'], 
+                    'title'         => stripslashes($data['title']), 
                     'author'        => stripslashes($data['author']), 
                     'editor'        => stripslashes($data['editor']), 
                     'isbn'          => $data['isbn'], 
@@ -497,21 +529,22 @@ class TP_Publications {
                     'booktitle'     => stripslashes($data['booktitle']), 
                     'issuetitle'    => stripslashes($data['issuetitle']), 
                     'journal'       => stripslashes($data['journal']), 
-                    'volume'        => $data['volume'], 
-                    'number'        => $data['number'], 
-                    'pages'         => $data['pages'], 
+                    'issue'         => stripslashes($data['issue']),
+                    'volume'        => stripslashes($data['volume']), 
+                    'number'        => stripslashes($data['number']), 
+                    'pages'         => stripslashes($data['pages']), 
                     'publisher'     => stripslashes($data['publisher']), 
                     'address'       => stripslashes($data['address']), 
-                    'edition'       => $data['edition'], 
-                    'chapter'       => $data['chapter'], 
+                    'edition'       => stripslashes($data['edition']), 
+                    'chapter'       => stripslashes($data['chapter']), 
                     'institution'   => stripslashes($data['institution']), 
                     'organization'  => stripslashes($data['organization']), 
                     'school'        => stripslashes($data['school']), 
-                    'series'        => $data['series'], 
-                    'crossref'      => $data['crossref'], 
+                    'series'        => stripslashes($data['series']), 
+                    'crossref'      => stripslashes($data['crossref']), 
                     'abstract'      => stripslashes($data['abstract']), 
                     'howpublished'  => stripslashes($data['howpublished']), 
-                    'key'           => $data['key'], 
+                    'key'           => stripslashes($data['key']), 
                     'techtype'      => stripslashes($data['techtype']), 
                     'comment'       => stripslashes($data['comment']), 
                     'note'          => stripslashes($data['note']), 
@@ -524,27 +557,38 @@ class TP_Publications {
                     'status'        => stripslashes($data['status']), 
                     'modified'      => $post_time ), 
                 array( 'pub_id' => $pub_id ), 
-                array( '%s', '%s', '%s', '%s', '%s', '%s', '%s' ,'%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s' ), 
+                array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ,'%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s' ), 
                 array( '%d' ) );
         
         // get_tp_message($wpdb->last_query);
         
         // Bookmarks
-        if ( $bookmark != '' ) {
-            $max = count( $bookmark );
+        // Delete all exisiting bookmarks for this publication
+        if ( !empty( $del_bookmarks ) ) {
+            $max = count( $del_bookmarks );
             for( $i = 0; $i < $max; $i++ ) {
-                if ($bookmark[$i] != '' || $bookmark[$i] != 0) {
-                    TP_Bookmarks::add_bookmark($pub_id, $bookmark[$i]);
+                if ( $del_bookmarks[$i] != '' || $del_bookmarks[$i] != 0 ) {
+                    TP_Bookmarks::delete_bookmark($del_bookmarks[$i]);
+                }
+            }
+        }
+        
+        // Add all current bookmarks
+        if ( !empty( $new_bookmarks ) ) {
+            $max = count( $new_bookmarks );
+            for( $i = 0; $i < $max; $i++ ) {
+                if ( $new_bookmarks[$i] != '' || $new_bookmarks[$i] != 0 ) {
+                    TP_Bookmarks::add_bookmark($pub_id, $new_bookmarks[$i], true);
                 }
             }
         }
         
         // Handle tag relations
-        if ( $delbox != '' ) {
-            TP_Tags::delete_tag_relation($delbox);
+        if ( !empty( $del_tags ) ) {
+            TP_Tags::delete_tag_relation($del_tags);
         }
-        if ( $tags != '' ) {
-            TP_Publications::add_relation($pub_id, $tags);
+        if ( !empty( $new_tags ) ) {
+            TP_Publications::add_relation($pub_id, $new_tags);
         }
         
         // Handle author/editor relations
@@ -578,7 +622,7 @@ class TP_Publications {
         
         // Update publication
         $data = wp_parse_args( $input_data, $search_pub );
-        self::change_publication($search_pub['pub_id'], $data, '', '', '');
+        self::change_publication($search_pub['pub_id'], $data);
         
         // Update tags
         if ( $ignore_tags === false ) {
@@ -615,7 +659,7 @@ class TP_Publications {
     }
     
     /**
-     * Deletes course meta
+     * Deletes pub meta
      * @param int $pub_id           The publication ID
      * @param string $meta_key      The name of the meta field
      * @since 5.0.0
@@ -741,9 +785,10 @@ class TP_Publications {
      */
     public static function get_default_fields () {
         return array(
-            'title'             => '',
             'type'              => '',
             'bibtex'            => '',
+            'award'             => '',
+            'title'             => '',
             'author'            => '',
             'editor'            => '',
             'isbn'              => '',
@@ -753,6 +798,7 @@ class TP_Publications {
             'booktitle'         => '',
             'issuetitle'        => '',
             'journal'           => '',
+            'issue'             => '',
             'volume'            => '',
             'number'            => '',
             'pages'             => '',

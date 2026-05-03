@@ -31,7 +31,7 @@ class TP_Update {
         
         // if is the current one
         if ( $db_version === $software_version ) {
-            get_tp_message( __('An update is not necessary.','teachpress') );
+            get_tp_message( esc_html__('An update is not necessary.','teachpress') );
             return;
         }
         
@@ -110,9 +110,16 @@ class TP_Update {
             $update_level = '8';
         }
         
-        // force updates to reach structure of teachPress 7.0.0
+        // force updates to reach structure of teachPress 8.0.0
         if ( $db_version[0] === '8' || $update_level === '8' ) {
             TP_Update::upgrade_to_80();
+            TP_Update::upgrade_to_81($charset_collate);
+            $update_level = '9';
+        }
+        
+        // force updates to reach structure of teachPress 9.0.0
+        if ( $db_version[0] === '9' || $update_level === '9' ) {
+            TP_Update::upgrade_to_90($charset_collate);
         }
         
         // Add teachPress options
@@ -844,6 +851,40 @@ class TP_Update {
     }
     
     /**
+     * Database upgrade to teachPress 8.1.0 structure
+     * @param string $charset_collate
+     */
+    private static function upgrade_to_81( $charset_collate ) {
+        global $wpdb;
+        // expand char limit for teachpress_pub::bibtex
+        if ($wpdb->query("SHOW COLUMNS FROM " . TEACHPRESS_PUB . " LIKE 'bibtex'") == '1') {
+            $wpdb->query("ALTER TABLE " . TEACHPRESS_PUB . " CHANGE `bibtex` `bibtex` VARCHAR (100) $charset_collate NULL DEFAULT NULL");
+        }
+        // add column issue to table teachpress_pub
+        if ($wpdb->query("SHOW COLUMNS FROM " . TEACHPRESS_PUB . " WHERE Field = 'issue'") == '0') { 
+            $wpdb->query("ALTER TABLE " . TEACHPRESS_PUB . " ADD `issue` VARCHAR(40) $charset_collate NULL DEFAULT NULL AFTER `journal`");
+        }
+    }
+
+
+    /**
+     * Database upgrade to teachPress 9.0.0 structure
+     * @param string $charset_collate
+     * @since 9.0.0
+     */
+    private static function upgrade_to_90($charset_collate) {
+        global $wpdb;
+        
+        // add new tables
+        TP_Tables::add_table_monitored_sources($charset_collate);
+
+        // add column image_target to table teachpress_pub
+        if ($wpdb->query("SHOW COLUMNS FROM " . TEACHPRESS_PUB . " LIKE 'award'") == '0') { 
+            $wpdb->query("ALTER TABLE " . TEACHPRESS_PUB . " ADD `award` VARCHAR (100) NULL DEFAULT NULL AFTER `type`");
+        }
+    }
+    
+    /**
      * Renames a table
      * @param string $oldname
      * @param string $newname
@@ -854,8 +895,8 @@ class TP_Update {
         
         global $wpdb;
         // Check if the old table exists
-        if( $wpdb->get_var("SHOW TABLES LIKE '" . esc_sql($oldname) . "'") == esc_sql($oldname) ) {
-            $wpdb->query('RENAME TABLE ' . esc_sql($oldname) . ' TO ' . esc_sql($newname) . '');
+        if( $wpdb->get_var("SHOW TABLES LIKE '" . TP_DB_Helpers::validate_qualifier($oldname) . "'") == TP_DB_Helpers::validate_qualifier($oldname) ) {
+            $wpdb->query('RENAME TABLE ' . TP_DB_Helpers::validate_qualifier($oldname) . ' TO ' . TP_DB_Helpers::validate_qualifier($newname) . '');
             return true;
         }
         return false;
@@ -949,11 +990,11 @@ class TP_Update {
         set_time_limit(TEACHPRESS_TIME_LIMIT);
         
         if ( $limit !== '' ) {
-            $limit = ' LIMIT ' . esc_sql($limit);
+            $limit = ' LIMIT ' . TP_DB_Helpers::validate_qualifier($limit);
         }
         
         $relation = '';
-        get_tp_message( __('Step 1: Read data and add authors','teachpress') );
+        get_tp_message( esc_html__('Step 1: Read data and add authors','teachpress') );
         $pubs = $wpdb->get_results("SELECT pub_id, author, editor FROM " . TEACHPRESS_PUB . $limit, ARRAY_A);
         foreach ( $pubs as $row ) {
             if ( $row['author'] != '' ) {
@@ -965,9 +1006,9 @@ class TP_Update {
         }
         $relation = substr($relation, 0, -2);
         $relation = str_replace(', ,', ',', $relation);
-        get_tp_message( __('Step 2: Add relations between authors and publications','teachpress') );
+        get_tp_message( esc_html__('Step 2: Add relations between authors and publications','teachpress') );
         $wpdb->query("INSERT INTO " . TEACHPRESS_REL_PUB_AUTH . " (`pub_id`, `author_id`, `is_author`, `is_editor`) VALUES $relation");
-        get_tp_message( __('Update successful','teachpress') );
+        get_tp_message( esc_html__('Update successful','teachpress') );
     }
     
     /**
@@ -979,7 +1020,7 @@ class TP_Update {
         // Try to set the time limit for the script
         set_time_limit(TEACHPRESS_TIME_LIMIT);
         $relation = '';
-        get_tp_message( __('Step 1: Read and prepare data','teachpress') );
+        get_tp_message( esc_html__('Step 1: Read and prepare data','teachpress') );
         $students = $wpdb->get_results("SELECT wp_id, course_of_studies, birthday, semesternumber, matriculation_number FROM " . TEACHPRESS_STUD, ARRAY_A);
         foreach ( $students as $row ) {
             $relation .= "(" . $row['wp_id'] . ", 'course_of_studies', '" . $row['course_of_studies'] . "'), ";
@@ -989,9 +1030,9 @@ class TP_Update {
         }
         
         $relation = substr($relation, 0, -2);
-        get_tp_message( __('Step 2: Insert data','teachpress') );
+        get_tp_message( esc_html__('Step 2: Insert data','teachpress') );
         $wpdb->query("INSERT INTO " . TEACHPRESS_STUD_META . " (`wp_id`, `meta_key`, `meta_value`) VALUES $relation");
-        get_tp_message( __('Update successful','teachpress') );
+        get_tp_message( esc_html__('Update successful','teachpress') );
     }
 
     /**
@@ -1054,28 +1095,35 @@ class TP_Update {
         
         // course_of_studies
         if ($wpdb->query("SELECT value FROM " . TEACHPRESS_SETTINGS . " WHERE `variable` = 'course_of_studies' AND `category` = 'teachpress_stud'") == '0') {
-            $value = 'name = {course_of_studies}, title = {' . __('Course of studies','teachpress') . '}, type = {SELECT}, required = {false}, min = {false}, max = {false}, step = {false}, visibility = {admin}';
+            $value = 'name = {course_of_studies}, title = {Course of studies}, type = {SELECT}, required = {false}, min = {false}, max = {false}, step = {false}, visibility = {admin}';
             $wpdb->query("INSERT INTO " . TEACHPRESS_SETTINGS . " (`variable`, `value`, `category`) VALUES ('course_of_studies', '$value', 'teachpress_stud')"); 
         }
         // birthday
         if ($wpdb->query("SELECT value FROM " . TEACHPRESS_SETTINGS . " WHERE `variable` = 'birthday' AND `category` = 'teachpress_stud'") == '0') {
-            $value = 'name = {birthday}, title = {' . __('Birthday','teachpress') . '}, type = {DATE}, required = {false}, min = {false}, max = {false}, step = {false}, visibility = {normal}';
+            $value = 'name = {birthday}, title = {Birthday}, type = {DATE}, required = {false}, min = {false}, max = {false}, step = {false}, visibility = {normal}';
             $wpdb->query("INSERT INTO " . TEACHPRESS_SETTINGS . " (`variable`, `value`, `category`) VALUES ('birthday', '$value', 'teachpress_stud')"); 
         }
         // semester_number
         if ($wpdb->query("SELECT value FROM " . TEACHPRESS_SETTINGS . " WHERE `variable` = 'semester_number' AND `category` = 'teachpress_stud'") == '0') {
-            $value = 'name = {semester_number}, title = {' . __('Semester number','teachpress') . '}, type = {INT}, required = {false}, min = {1}, max = {99}, step = {1}, visibility = {normal}';
+            $value = 'name = {semester_number}, title = {Semester number}, type = {INT}, required = {false}, min = {1}, max = {99}, step = {1}, visibility = {normal}';
             $wpdb->query("INSERT INTO " . TEACHPRESS_SETTINGS . " (`variable`, `value`, `category`) VALUES ('semester_number', '$value', 'teachpress_stud')"); 
         }
         // matriculation_number
         if ($wpdb->query("SELECT value FROM " . TEACHPRESS_SETTINGS . " WHERE `variable` = 'matriculation_number' AND `category` = 'teachpress_stud'") == '0') {
-            $value = 'name = {matriculation_number}, title = {' . __('Matriculation number','teachpress') . '}, type = {INT}, required = {false}, min = {1}, max = {1000000}, step = {1}, visibility = {admin}';
+            $value = 'name = {matriculation_number}, title = {Matriculation number}, type = {INT}, required = {false}, min = {1}, max = {1000000}, step = {1}, visibility = {admin}';
             $wpdb->query("INSERT INTO " . TEACHPRESS_SETTINGS . " (`variable`, `value`, `category`) VALUES ('matriculation_number', '$value', 'teachpress_stud')");
         }
+
         /**** since version 5.0.3 ****/
         // Fix an installer bug (wrong template for related content)
         if ( get_tp_option('rel_content_template') == 'page' ) {
             TP_Options::change_option('rel_content_template', '[tpsingle [key]]<!--more-->' . "\n\n[tpabstract]\n\n[tplinks]\n\n[tpbibtex]");
+        }
+
+        /**** since version 9.0.3 ****/
+        // group references
+        if ($wpdb->query("SELECT value FROM " . TEACHPRESS_SETTINGS . " WHERE `variable` = 'ref_grouped' AND `category` = 'system'") == '0') {
+            $wpdb->query("INSERT INTO " . TEACHPRESS_SETTINGS . " (`variable`, `value`, `category`) VALUES ('ref_grouped', '0', 'system')");
         }
     }
     
@@ -1088,6 +1136,6 @@ class TP_Update {
         global $wpdb;
         $version = htmlspecialchars( esc_sql( $version ) );
         $wpdb->query("UPDATE " . TEACHPRESS_SETTINGS . " SET `value` = '$version', `category` = 'system' WHERE `variable` = 'db-version'");
-        get_tp_message( __('Update successful','teachpress') );
+        get_tp_message( esc_html__('Update successful','teachpress') );
     }
 }

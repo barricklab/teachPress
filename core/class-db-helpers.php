@@ -45,13 +45,13 @@ class TP_DB_Helpers {
      */
     public static function generate_where_clause($input, $column, $connector = 'AND', $operator = '=', $pattern = '') {
         $end = '';
-        if ($input === '' || $input === 0) {
+        if ($input === '' || $input === 0 || $input === null) {
             return;
         }
         
         $array = explode(",", $input);
         foreach ( $array as $element ) {
-            $element = esc_sql( htmlspecialchars( trim($element) ) );
+            $element = esc_sql( trim($element) );
             if ( $element === '' ) {
                 continue;
             }
@@ -60,6 +60,50 @@ class TP_DB_Helpers {
         }
         
         return $end;
+    }
+    
+    /**
+     * Generate a between clause
+     * 
+     * The $input should be "start,end". For an open end, you can use 0. 
+     * Examples: 
+     * "2017,2022"  --> between 2017 AND 2022
+     * "0,2017"     --> all <= 2017
+     * "2017,0"     --> all >= 2017
+     * 
+     * @param string $input     Start and end value separated by comma
+     * @param string $column    database column
+     * @return string
+     * @since 9.0.0
+     */
+    public static function generate_between_clause ($input, $column) {
+        
+        // Return if there is nothing to do
+        if ($input === '') {
+            return;
+        }
+        
+        $array = explode(",", $input);
+        
+        // we need an array length of two
+        if ( count($array) != 2 ) {
+            return;
+        }
+        
+        $start = esc_sql( trim($array[0]));
+        $end = esc_sql( trim($array[1]));
+        $element = esc_sql( trim($column) );
+        
+        if ( $start == '0' ) {
+            return "$element <= '$end'";
+        }
+        
+        if ( $end == '0' ) {
+            return "$element >= '$start'";
+        }
+        
+        return "$element BETWEEN '$start' AND '$end'"; 
+        
     }
     
     /**
@@ -166,6 +210,21 @@ class TP_DB_Helpers {
     public static function get_db_index ($db_name) {
         global $wpdb;
         return $wpdb->get_results("SHOW INDEX FROM " . $db_name, ARRAY_A);
+    }
+    
+    /**
+     * Validates qualifiers for order or limit clauses. Returns the default if the input contains not allowed chars  
+     * @param string $input
+     * @param string $default
+     * @return string
+     * @since 9.0.8
+     */
+    public static function validate_qualifier ($input, $default = '') {
+        if ( preg_match("#^[a-zA-Z0-9 \.,`_\]]+$#", $input) ) {
+            return $input;
+        } else {
+            return $default;
+        }
     }
     
 }

@@ -64,7 +64,7 @@ function tp_load_template($slug) {
     // load template file
     if ( array_key_exists($slug, $templates) ) {
         include_once $templates[$slug];
-        wp_enqueue_style($slug, TEACHPRESS_TEMPLATE_URL . $slug. '.css');
+        wp_enqueue_style($slug, TEACHPRESS_TEMPLATE_URL . $slug. '.css', array(), get_tp_version() );
         return new $slug();
     }
 
@@ -172,7 +172,7 @@ class TP_Publication_Template_API {
         }
 
         if ( in_array($data, $values) ) {
-            $title = ( $element === 'status' && $data === 'forthcoming' ) ? __('Forthcoming','teachpress') : $data;
+            $title = ( $element === 'status' && $data === 'forthcoming' ) ? esc_html__('Forthcoming','teachpress') : $data;
             // Replace possible chars from the meta data system
             $title = str_replace(array('{','}'), array('',''), $title);
             return '<span class="tp_pub_label_' . $element . ' ' . esc_attr($data) . '">' . $title . '</span>';
@@ -217,7 +217,7 @@ class TP_Publication_Template_API {
     public function get_type($container = 'span') {
         $type = $this->data['row']['type'];
         if ( $container !== '' ) {
-            return '<' . $container . ' class="tp_pub_type ' . $type . '">' . tp_translate_pub_type($type) . '</' . $container . '>';
+            return '<' . $container . ' class="tp_pub_type tp_  ' . $type . '">' . tp_translate_pub_type($type) . '</' . $container . '>';
         }
         return $type;
     }
@@ -235,6 +235,26 @@ class TP_Publication_Template_API {
             return '';
         }
         return $before . $this->data['all_authors']  . $after;
+    }
+
+    /**
+     * Returns the award (as html element)
+     * @return string
+     * @since 9.0.0
+     * @access public
+     */
+    public function get_award($withLabel = false) {
+        global $tp_awards;
+        if ( $this->data['row']['award'] != '' && $this->data['row']['award'] != 'none' ) {
+            $award_data = $tp_awards->get_data($this->data['row']['award']);
+            $s = '<span class="tp_pub_label_award" title="'.$award_data["i18n_singular"].'"><i class="'.$award_data["icon"].'"></i>';
+            if ($withLabel) {
+                $s .= ' '.$award_data["i18n_singular"];
+            }
+            $s .= "</span>";
+            return $s;
+        }
+        return "";
     }
 
     /**
@@ -332,15 +352,36 @@ class TP_Publication_Template_API {
         $container_id = $this->data['container_id'];
 
         // div altmetric
-        if ( $settings['show_altmetric_entry']  && $row['doi'] != '' ) {
-            $content .= TP_HTML_Publication_Template::get_info_container( TP_HTML_Publication_Template::prepare_altmetric($row['doi']), 'altmetric', $container_id );
+        // Render the Altmetric badge in the publication entry info container.
+        // The badge type is controlled by the 'show_altmetric_type' shortcode parameter.
+        // Falls back to 'donut' when no type is specified, ensuring backward compatibility.
+        if ( $settings['show_altmetric_entry'] && $row['doi'] !== '' ) {
+            $altm_type = ( ! empty( $settings['show_altmetric_type'] ) ) ? $settings['show_altmetric_type'] : 'donut';
+            $content .= TP_HTML_Publication_Template::get_info_container(
+                TP_HTML_Publication_Template::prepare_altmetric( $row['doi'], $altm_type ),
+                'altmetric',
+                $container_id
+            );
         }
+
+        if ( $settings['show_dimensions_badge'] && $row['doi'] != '' ) {
+            $content .= TP_HTML_Publication_Template::get_info_container( TP_HTML_Publication_Template::prepare_dimensions( $row['doi'] ), 'dimensions', $container_id );
+        }
+
+        if ( $settings['show_plumx_widget'] && $row['doi'] != '' ) {
+            $content .= TP_HTML_Publication_Template::get_info_container( TP_HTML_Publication_Template::prepare_plumx( $row['doi'] ), 'plumx', $container_id );
+        }
+
+	// div comment
+	if ( $settings['show_comment'] && $row['comment'] != '' ) {
+            $content .= TP_HTML_Publication_Template::get_info_container( TP_HTML::prepare_text($row['comment']), 'comment', $container_id );
+	}
 
         // div bibtex
         $content .= TP_HTML_Publication_Template::get_info_container( nl2br( TP_Bibtex::get_single_publication_bibtex($row, $keywords, $settings['convert_bibtex']) ), 'bibtex', $container_id );
 
         // div abstract
-        if ( $row['abstract'] != '' ) {
+        if ( $settings['show_abstract'] && $row['abstract'] != '' ) {
             $content .= TP_HTML_Publication_Template::get_info_container( TP_HTML::prepare_text($row['abstract']), 'abstract', $container_id );
         }
 
@@ -370,9 +411,9 @@ class TP_HTML_Publication_Template {
             'author'                => '',
             'version'               => '0.0',
             'button_separator'      => ' | ',
-            'menu_label_tags'       => __('Tags') . ': ',
-            'menu_label_links'      => __('Links','teachpress') . ': ',
-            'meta_label_in'         => __('In','teachpress') . ': ',
+            'menu_label_tags'       => esc_html__('Tags') . ': ',
+            'menu_label_links'      => esc_html__('Links','teachpress') . ': ',
+            'meta_label_in'         => esc_html__('In','teachpress') . ': ',
             'citation_style'        => 'teachPress'
         );
         // overwrite defaults
@@ -392,9 +433,9 @@ class TP_HTML_Publication_Template {
      * @param int $pub_count            The counter for numbered publications (default: 0)
      * @return string
      * @since 6.0.0
-    */
+     */
     public static function get_single ($row, $all_tags, $settings, $template, $template_settings, $pub_count = 0) {
-        $container_id = ( $settings['container_suffix'] != '' ) ? $row['pub_id'] . '_' . $settings['container_suffix'] : $row['pub_id'];
+        $container_id = ( $settings['container_suffix'] != '' ) ? $row['pub_id'] . '_' . tp_sanitize_key($settings['container_suffix']) : $row['pub_id'];
         $separator = $template_settings['button_separator'];
         $name = self::prepare_publication_title($row, $settings, $container_id);
         $images = self::handle_images($row, $settings, $template);
@@ -405,9 +446,12 @@ class TP_HTML_Publication_Template {
         $settings['meta_label_in'] = $template_settings['meta_label_in'];
         $tag_string = '';
         $keywords = '';
+        $comment = '';
         $all_authors = '';
         $is_button = false;
         $altmetric = '';
+        $dimensions = '';
+        $plumx = '';
 
         // show tags
         if ( $settings['show_tags_as'] != 'none' ) {
@@ -418,28 +462,48 @@ class TP_HTML_Publication_Template {
 
         // parse author names for teachPress style
         if ( $row['type'] === 'collection' || $row['type'] === 'periodical' || ( $row['author'] === '' && $row['editor'] !== '' ) ) {
-            $all_authors = TP_Bibtex::parse_author($row['editor'], $settings['author_separator'], $settings['author_name'] ) . ' (' . __('Ed.','teachpress') . ')';
+            $all_authors = TP_Bibtex::parse_author($row['editor'], $settings['author_separator'], $settings['author_name'] ) . ' (' . esc_html__('Ed.','teachpress') . ')';
         }
         else {
             $all_authors = TP_Bibtex::parse_author($row['author'], $settings['author_separator'], $settings['author_name'] );
         }
 
         // if the publication has a doi -> altmetric
-        if ( $settings['show_altmetric_entry']  &&  $row['doi'] != '' ) {
-            $altmetric = self::get_info_button(__('Altmetric','teachpress'), __('Show Altmetric','teachpress'), 'altmetric', $container_id) . $separator;
+        if ( TEACHPRESS_ALTMETRIC_SUPPORT === true && $settings['show_altmetric_entry']  &&  $row['doi'] != '' ) {
+            $altmetric = self::get_info_button(esc_html__('Altmetric','teachpress'), esc_html__('Show Altmetric','teachpress'), 'altmetric', $container_id) . $separator;
+            $is_button = true;
+        }
+
+        // Dimensions
+        if ( TEACHPRESS_DIMENSIONS_SUPPORT === true && $settings['show_dimensions_badge'] &&  $row['doi'] != '' ) {
+            $dimensions = self::get_info_button( esc_html__( 'Dimensions', 'teachpress' ), esc_html__( 'Show Dimensions Badge', 'teachpress' ), 'dimensions', $container_id ) . $separator;
+            $is_button = true;
+        }
+
+        // PlumX
+        if ( TEACHPRESS_PLUMX_SUPPORT === true && $settings['show_plumx_widget'] &&  $row['doi'] != '' ) {
+            $plumx = self::get_info_button( esc_html__( 'PlumX', 'teachpress' ), esc_html__( 'Show PlumX Widget', 'teachpress' ), 'plumx', $container_id ) . $separator;
+            $is_button = true;
+        }
+
+        // Comment
+        if ( $settings['show_comment'] === true && $row['comment'] != '' ) {
+            $link_text = ( $settings['comment_text'] != '' ) ? $settings['comment_text'] : esc_html__('Comment', 'teachpress');
+            $link_tooltip = ( $settings['comment_tooltip'] != '' ) ? $settings['comment_tooltip'] : esc_html__('Show comment', 'teachpress');
+            $comment = self::get_info_button($link_text, $link_tooltip, 'comment', $container_id) . $separator;
             $is_button = true;
         }
 
         // if there is an abstract
-        if ( $row['abstract'] != '' ) {
-            $abstract = self::get_info_button(__('Abstract','teachpress'), __('Show abstract','teachpress'), 'abstract', $container_id) . $separator;
+        if ( $settings['show_abstract'] === true && $row['abstract'] != '' ) {
+            $abstract = self::get_info_button(esc_html__('Abstract','teachpress'), esc_html__('Show abstract','teachpress'), 'abstract', $container_id) . $separator;
             $is_button = true;
         }
 
         // if there are links
         if ( $row['url'] != '' || $row['doi'] != '' ) {
             if ( $settings['link_style'] === 'inline' || $settings['link_style'] === 'direct' ) {
-                $url = self::get_info_button(__('Links','teachpress'), __('Show links and resources','teachpress'), 'links', $container_id) . $separator;
+                $url = self::get_info_button(esc_html__('Links','teachpress'), esc_html__('Show links and resources','teachpress'), 'links', $container_id) . $separator;
                 $is_button = true;
             }
             else {
@@ -449,20 +513,20 @@ class TP_HTML_Publication_Template {
 
         // if with bibtex
         if ( $settings['show_bibtex'] === true ) {
-            $bibtex = self::get_info_button(__('BibTeX','teachpress'), __('Show BibTeX entry','teachpress'), 'bibtex', $container_id) . $separator;
+            $bibtex = self::get_info_button(esc_html__('BibTeX','teachpress'), esc_html__('Show BibTeX entry','teachpress'), 'bibtex', $container_id) . $separator;
             $is_button = true;
         }
 
         // link style
         if ( $settings['link_style'] === 'inline' || $settings['link_style'] === 'direct' ) {
-            $tag_string = $abstract . $url . $bibtex . $altmetric . $tag_string ;
+            $tag_string = $comment . $abstract . $url . $bibtex . $altmetric . $dimensions . $plumx. $tag_string ;
         }
         else {
-            $tag_string = $abstract . $bibtex . $altmetric . $tag_string . $url ;
+            $tag_string = $comment . $abstract . $bibtex . $altmetric . $dimensions . $plumx . $tag_string . $url ;
         }
 
         // load template interface
-        $interface_data = array (
+        $interface_data = [
             'row'               => $row,
             'title'             => $name,
             'images'            => $images,
@@ -473,7 +537,7 @@ class TP_HTML_Publication_Template {
             'keywords'          => $keywords,
             'container_id'      => $container_id,
             'template_settings' => $template_settings
-        );
+        ];
 
         $interface = new TP_Publication_Template_API();
         $interface->set_data($interface_data);
@@ -489,7 +553,7 @@ class TP_HTML_Publication_Template {
      * @param array $settings       The settings array
      * @return string
      * @since 6.0.0
-    */
+     */
     public static function get_publication_meta_row($row, $settings) {
         global $tp_publication_types;
         $use_span = $settings['use_span'];
@@ -512,7 +576,7 @@ class TP_HTML_Publication_Template {
         $urldate = '';
         if ( isset( $row['urldate'] ) && $row['urldate'] !== '0000-00-00'  ) {
             $row['urldate'] = ( array_key_exists('date_format', $settings) === true ) ? date( $settings['date_format'], strtotime($row['urldate']) ) : $row['urldate'];
-            $urldate = TP_HTML_Publication_Template::prepare_field('urldate', $row['urldate'],', ' . __('visited','teachpress') . ': ', '', $use_span);
+            $urldate = TP_HTML_Publication_Template::prepare_field('urldate', $row['urldate'],', ' . esc_html__('visited','teachpress') . ': ', '', $use_span);
         }
 
         // for number
@@ -520,28 +584,29 @@ class TP_HTML_Publication_Template {
             $number = isset( $row['number'] ) ? TP_HTML_Publication_Template::prepare_field('number', $row['number'],'',', ',$use_span) : '';
         }
         else {
-            $number = isset( $row['number'] ) ? TP_HTML_Publication_Template::prepare_field('number', $row['number'],'(','), ',$use_span) : '';
+            $number = isset( $row['number'] ) ? TP_HTML_Publication_Template::prepare_field('number', $row['number'],esc_html__('no.','teachpress') . ' ',', ', $use_span) : '';
         }
 
         // for forthcoming publications
         if ( $row['status'] === 'forthcoming' ) {
-            $year = __('Forthcoming','teachpress');
+            $year = esc_html__('Forthcoming','teachpress');
         }
         else {
             $year = isset( $row['year'] ) ? TP_HTML_Publication_Template::prepare_field('year', $row['year'],'','',$use_span) : '';
         }
 
         // isset() doesn't work for $editor
-        $editor = ( $row['editor'] != '' ) ? TP_Bibtex::parse_author($row['editor'], $settings['editor_separator'], $settings['editor_name']) . ' (' . __('Ed.','teachpress') . '): ' : '';
-        $pages = isset( $row['pages'] ) ? TP_HTML_Publication_Template::prepare_field('pages', TP_Bibtex::prepare_page_number($row['pages']) , __('pp.','teachpress') . ' ',', ', $use_span) : '';
+        $editor = ( $row['editor'] != '' ) ? TP_Bibtex::parse_author($row['editor'], $settings['editor_separator'], $settings['editor_name']) . ' (' . esc_html__('Ed.','teachpress') . '): ' : '';
+        $pages = isset( $row['pages'] ) ? TP_HTML_Publication_Template::prepare_field('pages', TP_Bibtex::prepare_page_number($row['pages']) , esc_html__('pp.','teachpress') . ' ',', ', $use_span) : '';
         $booktitle = isset( $row['booktitle'] ) ? TP_HTML_Publication_Template::prepare_field('booktitle', $row['booktitle'],'',', ',$use_span) : '';
         $issuetitle = isset( $row['issuetitle'] ) ? TP_HTML_Publication_Template::prepare_field('issuetitle', $row['issuetitle'],'',', ',$use_span) : '';
         $journal = isset( $row['journal'] ) ? TP_HTML_Publication_Template::prepare_field('journal', $row['journal'],'',', ',$use_span) : '';
-        $volume = isset( $row['volume'] ) ? TP_HTML_Publication_Template::prepare_field('volume', $row['volume'],'',' ',$use_span) : '';
+        $volume = isset( $row['volume'] ) ? TP_HTML_Publication_Template::prepare_field('volume', $row['volume'],esc_html__('vol.','teachpress') . ' ',', ',$use_span) : '';
+        $issue = isset( $row['issue'] ) ? TP_HTML_Publication_Template::prepare_field('issue', $row['issue'],esc_html__('iss.','teachpress') . ' ',', ',$use_span) : '';
         $publisher = isset( $row['publisher'] ) ? TP_HTML_Publication_Template::prepare_field('publisher', $row['publisher'],'',', ',$use_span) : '';
         $address = isset( $row['address'] ) ? TP_HTML_Publication_Template::prepare_field('address', $row['address'],'',', ',$use_span) : '';
         $edition = isset( $row['edition'] ) ? TP_HTML_Publication_Template::prepare_field('edition', $row['edition'],'',', ',$use_span) : '';
-        $chapter = isset( $row['chapter'] ) ? TP_HTML_Publication_Template::prepare_field('chapter', $row['chapter'],' ' . __('Chapter','teachpress') . ' ',', ',$use_span) : '';
+        $chapter = isset( $row['chapter'] ) ? TP_HTML_Publication_Template::prepare_field('chapter', $row['chapter'],' ' . esc_html__('Chapter','teachpress') . ' ',', ',$use_span) : '';
         $institution = isset( $row['institution'] ) ? TP_HTML_Publication_Template::prepare_field('institution', $row['institution'],'',' ',$use_span) : '';
         $organization = isset( $row['organization'] ) ? TP_HTML_Publication_Template::prepare_field('organization', $row['organization'],'',' ',$use_span) : '';
         $school = isset( $row['school'] ) ? TP_HTML_Publication_Template::prepare_field('school', $row['school'],'',', ',$use_span) : '';
@@ -550,11 +615,6 @@ class TP_HTML_Publication_Template {
         $techtype = isset( $row['techtype'] ) ? TP_HTML_Publication_Template::prepare_field('techtype', $row['techtype'],'',', ',$use_span) : '';
         $note = isset( $row['techtype'] ) ? TP_HTML_Publication_Template::prepare_field('note', $row['note'],', (',')',$use_span) : '';
         $date = ( array_key_exists('date_format', $settings) === true ) ? TP_HTML_Publication_Template::prepare_field('date', date( $settings['date_format'], strtotime($row['date']) ) ,'','',$use_span) : '';
-
-        // special cases for volume/number
-        if ( $number == '' && $volume != '' ) {
-            $number = ', ';
-        }
 
         // special cases for article/incollection/inbook/inproceedings
         $in = ( $use_span === true ) ? '<span class="tp_pub_additional_in">' . $settings['meta_label_in'] . '</span>' : $settings['meta_label_in'];
@@ -588,6 +648,7 @@ class TP_HTML_Publication_Template {
             '{techtype}'        => $techtype,
             '{urldate}'         => $urldate,
             '{volume}'          => $volume,
+            '{issue}'           => $issue,
             '{year}'            => $year,
         );
         $end = strtr($meta_row_template, $replace_pairs) . '.';
@@ -627,7 +688,7 @@ class TP_HTML_Publication_Template {
         else {
             $s .= '<div class="tp_' . $type . '_entry">' . $content . '</div>';
         }
-        $s .= '<p class="tp_close_menu"><a class="tp_close" onclick="teachpress_pub_showhide(' . "'" . $container_id . "','tp_" . $type . "'" . ')">' . __('Close','teachpress') . '</a></p>';
+        $s .= '<p class="tp_close_menu"><a class="tp_close" onclick="teachpress_pub_showhide(' . "'" . $container_id . "','tp_" . $type . "'" . ')">' . esc_html__('Close','teachpress') . '</a></p>';
         $s .= '</div>';
         return $s;
     }
@@ -775,10 +836,10 @@ class TP_HTML_Publication_Template {
             $doi_url = TEACHPRESS_DOI_RESOLVER . $doi;
             if (in_array($doi_url, $url_displayed) == False){
                 if ( $mode === 'list' ) {
-                    $end .= '<li><i class="' . TP_Icons::get_class( 'doi' ).'"></i><a class="tp_pub_list" href="' . $doi_url . '" title="' . __('Follow DOI:','teachpress') . $doi . '" target="_blank">doi:' . $doi . '</a></li>';
+                    $end .= '<li><i class="' . TP_Icons::get_class( 'doi' ).'"></i><a class="tp_pub_list" href="' . $doi_url . '" title="' . esc_html__('Follow DOI:','teachpress') . $doi . '" target="_blank">doi:' . $doi . '</a></li>';
                 }
                 else {
-                    $end .= '<a class="tp_pub_link" href="' . $doi_url . '" title="' . __('Follow DOI:','teachpress') . $doi . '" target="_blank"><i class="' . TP_Icons::get_class( 'doi').'"></i></a>';
+                    $end .= '<a class="tp_pub_link" href="' . $doi_url . '" title="' . esc_html__('Follow DOI:','teachpress') . $doi . '" target="_blank"><i class="' . TP_Icons::get_class( 'doi').'"></i></a>';
                 }
             }
         }
@@ -790,30 +851,62 @@ class TP_HTML_Publication_Template {
         return $end;
     }
 
+/**
+ * Prepares an Altmetric badge block for a publication entry.
+ *
+ * Generates the HTML embed element for an Altmetric badge. The badge type
+ * can be customised via the $altm_type parameter. If no type is provided,
+ * 'large-donut' is used as the default to preserve backward compatibility.
+ *
+ * For available badge types see:
+ * https://badge-docs.altmetric.com/customizations.html#badge-types
+ *
+ * @param string $doi       The DOI of the publication. Defaults to empty string.
+ * @param string $altm_type The Altmetric badge type to render.
+ *                          Accepted values: 'donut', 'medium-donut', 'large-donut',
+ *                          'bar', 'medium-bar', 'large-bar', '1', '4'.
+ *                          Defaults to 'large-donut'.
+ * @return string           The HTML string for the Altmetric embed, or empty string if no DOI.
+ * @since 3.0.0
+ * @access public
+ */
+public static function prepare_altmetric( $doi = '', $altm_type = 'large-donut' ) {
+    if ( $doi === '' ) {
+        return '';
+    }
+    return '<div data-badge-details="right" data-badge-type="' . esc_attr( $altm_type ) . '" data-doi="' . esc_attr( $doi ) . '" data-condensed="true" class="altmetric-embed"></div>';
+}
+
+
+
     /**
-     * Prepares an altmetric info block
+     * Prepares a Dimensions Badge
      * @param string $doi       The DOI number
      * @return string
-     * @since 3.0.0
-     * @version 2
+     * @since 9.0.0
      * @access public
      */
-    public static function prepare_altmetric($doi = '') {
-        $end = '';
-         /**
-         * Add DOI-URL
-         * @since 5.0.0
-         */
+    public static function prepare_dimensions($doi = '') {
         if ( $doi != '' ) {
-            $doi_url = TEACHPRESS_DOI_RESOLVER . $doi;
-
-            $end .= '<div data-badge-details="right" data-badge-type="large-donut" data-doi="'.$doi .'" data-condensed="true" class="altmetric-embed"></div>';
+            return '<span class="__dimensions_badge_embed__" data-doi="' . urlencode( $doi ) . '" data-style="large"></span>';
         }
-
-        return $end;
+        return '';
     }
 
 
+    /**
+     * Prepares an Artifact Plum Print Widget
+     * @param string $doi       The DOI number
+     * @return string
+     * @since 9.0.0
+     * @access public
+     */
+    public static function prepare_plumx($doi = '') {
+        if ( $doi != '' ) {
+            return '<a href="https://plu.mx/plum/a/?doi=' . urlencode( $doi ) . '" data-popup="right" class="plumx-plum-print-popup"></a>';
+        }
+        return '';
+    }
 
 
     /**
@@ -849,7 +942,7 @@ class TP_HTML_Publication_Template {
             return stripslashes($tag["name"]) . ', ';
         }
         else {
-            return '<a rel="nofollow" href="' . $settings['permalink'] . 'tgid=' . $tag["tag_id"] . $settings['html_anchor'] . '" title="' . __('Show all publications which have a relationship to this tag','teachpress') . '">' . stripslashes($tag["name"]) . '</a>, ';
+            return '<a rel="nofollow" href="' . $settings['permalink'] . 'tgid=' . $tag["tag_id"] . $settings['html_anchor'] . '" title="' . esc_html__('Show all publications which have a relationship to this tag','teachpress') . '">' . stripslashes($tag["name"]) . '</a>, ';
         }
     }
 
@@ -883,30 +976,40 @@ class TP_HTML_Publication_Template {
         // image link
         $image = TP_HTML_Publication_Template::handle_image_link ($image, $row, $settings);
 
+        // Altmetric / Dimensions / Plumx
+        $altmetric  = '';
+        $dimensions = '';
+        $plumx      = '';
 
-        // JEB Edits
-        // removed altmetrics here: was $image . $altmetric  (with tp_pub_image_ always)
+        // Render the Altmetric badge in the image area (donut position).
+        // The badge type is controlled by the 'show_altmetric_type' shortcode parameter.
+        // Falls back to 'donut' when no type is specified, ensuring backward compatibility.
+        if ( $settings['show_altmetric_donut'] ) {
+            $altm_type = ( ! empty( $settings['show_altmetric_type'] ) ) ? $settings['show_altmetric_type'] : 'donut';
+            $altmetric = '<div class="tp_pub_image_bottom"><div data-badge-type="' . esc_attr( $altm_type ) . '" data-doi="' . esc_attr( $row['doi'] ) . '" data-condensed="true" data-hide-no-mentions="true" class="altmetric-embed"></div></div>';
+        }
+
+        if ( $settings['show_dimensions_badge'] ) {
+            $dimensions = '<span class="__dimensions_badge_embed__" data-doi="' . urlencode( $row['doi'] ) . '"></span>';
+        }
+
+        if ( $settings['show_plumx_widget'] ) {
+            $plumx = '<div class="tp_pub_image_bottom"><a href="https://plu.mx/plum/a/?doi=' . urlencode( $row['doi'] ) . '" data-popup="hidden" class="plumx-plum-print-popup"></a></div>';
+        }
 
         // left position
         if ( $settings['image'] === 'left' ) {
-            $return['left'] = $template->get_image($image, 'left', 'width="' . $settings['pad_size'] . '"');
+            $return['left'] = $template->get_image($image . $altmetric . $dimensions . $plumx, 'left', 'width="' . $settings['pad_size'] . '"');
         }
 
         // right position
         if ( $settings['image'] === 'right' ) {
-            $return['right'] = $template->get_image($image, 'right', 'width="' . $settings['pad_size'] . '"');
+            $return['right'] = $template->get_image($image . $altmetric . $dimensions . $plumx, 'right', 'width="' . $settings['pad_size'] . '"');
         }
 
         // bottom position
         if ( $settings['image'] === 'bottom' ) {
-            $return['bottom'] = $template->get_image($image, 'bottom');
-        }
-
-        // Altmetric donut additions
-        $altmetric = '';
-        if( $settings['show_altmetric_donut'] ) {
-          $altmetric = '<div class="tp_pub_image_' . $settings['altmetric_position'] . '"><div data-badge-type="medium-donut" data-doi="' . $row['doi']  . '" data-condensed="true" data-hide-no-mentions="true" class="altmetric-embed"></div></div>';
-          $return[$settings['altmetric_position']] = $return[$settings['altmetric_position']] . $altmetric;
+            $return['bottom'] = $template->get_image($image . $altmetric . $dimensions . $plumx, 'bottom');
         }
 
         return $return;

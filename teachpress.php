@@ -2,10 +2,10 @@
 /**
  * Plugin Name:         teachPress
  * Plugin URI:          http://mtrv.wordpress.com/teachpress/
- * Description:         With teachPress you can easy manage courses, enrollments and publications.
+ * Description:         Powerful publication management for WordPress
  * Author:              Michael Winkler
  * Author URI:          http://mtrv.wordpress.com/
- * Version:             8.0.2
+ * Version:             9.0.13
  * Requires at least:   3.9
  * Text Domain:         teachpress
  * Domain Path:         /languages
@@ -13,12 +13,12 @@
  * License URI:         https://www.gnu.org/licenses/gpl-2.0.html
  * GitHub Plugin URI:   https://github.com/winkm89/teachPress
  * GitHub Branch:       master
-*/
+ */
 
 /*
    LICENCE
 
-    Copyright 2008-2021 Michael Winkler
+    Copyright 2008-2026 Michael Winkler
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@
 
 define('TEACHPRESS_GLOBAL_PATH', plugin_dir_path(__FILE__));
 
-// Loads contstants
+// Loads constants
 include_once('core/constants.php');
 
 // Core functions
@@ -52,50 +52,43 @@ include_once('core/class-document-manager.php');
 include_once('core/class-export.php');
 include_once('core/class-html.php');
 include_once('core/class-icons.php');
-include_once('core/class-mail.php');
 include_once('core/class-db-helpers.php');
 include_once('core/class-db-options.php');
 include_once('core/deprecated.php');
 include_once('core/feeds.php');
 include_once('core/general.php');
 include_once('core/shortcodes.php');
-include_once('core/courses/class-db-artefacts.php');
-include_once('core/courses/class-db-assessments.php');
-include_once('core/courses/class-db-courses.php');
-include_once('core/courses/class-db-documents.php');
-include_once('core/courses/class-db-students.php');
-include_once('core/courses/enrollments.php');
 include_once('core/publications/class-bibtex.php');
 include_once('core/publications/class-bibtex-import.php');
 include_once('core/publications/class-bibtex-macros.php');
 include_once('core/publications/class-cite-object.php');
+include_once('core/publications/class-crossref-import.php');
 include_once('core/publications/class-db-authors.php');
 include_once('core/publications/class-db-bookmarks.php');
 include_once('core/publications/class-db-publications.php');
 include_once('core/publications/class-db-tags.php');
 include_once('core/publications/class-publication-type.php');
+include_once('core/publications/class-award.php');
 include_once('core/publications/class-pubmed-import.php');
 include_once('core/publications/default-publication-types.php');
+include_once('core/publications/default-awards.php');
 include_once('core/publications/templates.php');
 include_once('core/publications/class-books-widget.php');
 
-
 // Admin menus
 if ( is_admin() ) {
-    include_once('admin/add-course.php');
+    include_once('admin/class-authors-page.php');
+    include_once('admin/class-tags-page.php');
     include_once('admin/add-publication.php');
-    include_once('admin/add-students.php');
-    include_once('admin/create-lists.php');
-    include_once('admin/edit-student.php');
-    include_once('admin/edit-tags.php');
     include_once('admin/import-publications.php');
-    include_once('admin/mail.php');
+    include_once('admin/publication-sources.php');
     include_once('admin/settings.php');
-    include_once('admin/show-authors.php');
-    include_once('admin/show-courses.php');
     include_once('admin/show-publications.php');
-    include_once('admin/show-single-course.php');
-    include_once('admin/show-students.php');
+}
+
+// cron job includes
+if ( wp_doing_cron() ) {
+    include_once('admin/publication-sources.php');
 }
 
 // BibTeX Parse v2.5
@@ -109,56 +102,17 @@ if ( !class_exists( 'BIBTEXPARSE' ) ) {
 /*********/
 
 /**
- * Add menu for courses and students
- * @since 0.1.0
- * @todo Remove support for WordPress < 3.9
- */
-function tp_add_menu() {
-    global $wp_version;
-    global $tp_admin_show_courses_page;
-    global $tp_admin_add_course_page;
-    $pos = TEACHPRESS_MENU_POSITION;
-
-    $logo = (version_compare($wp_version, '3.8', '>=')) ? plugins_url( 'images/logo_small.png', __FILE__ ) : plugins_url( 'images/logo_small_black.png', __FILE__ );
-
-    $tp_admin_show_courses_page = add_menu_page(
-            __('Course','teachpress'), 
-            __('Course','teachpress'),
-            'use_teachpress_courses', 
-            __FILE__, 
-            'tp_show_courses_page', 
-            $logo, 
-            $pos);
-    $tp_admin_add_course_page = add_submenu_page(
-            'teachpress/teachpress.php',
-            __('Add new','teachpress'), 
-            __('Add new', 'teachpress'),
-            'use_teachpress_courses',
-            'teachpress/add_course.php',
-            'tp_add_course_page');
-    add_submenu_page(
-            'teachpress/teachpress.php',
-            __('Students','teachpress'), 
-            __('Students','teachpress'),
-            'use_teachpress_courses', 
-            'teachpress/students.php', 
-            'tp_students_page');
-    add_action("load-$tp_admin_add_course_page", 'tp_add_course_page_help');
-    add_action("load-$tp_admin_show_courses_page", 'tp_show_course_page_help');
-    add_action("load-$tp_admin_show_courses_page", 'tp_show_course_page_screen_options');
-}
-
-/**
  * Add menu for publications
  * @since 0.9.0
  * @todo Remove support for WordPress <3.9
  */
-function tp_add_menu2() {
+function tp_add_menu() {
     global $wp_version;
     global $tp_admin_all_pub_page;
     global $tp_admin_your_pub_page;
     global $tp_admin_add_pub_page;
     global $tp_admin_import_page;
+    global $tp_admin_sources_page;
     global $tp_admin_show_authors_page;
     global $tp_admin_edit_tags_page;
 
@@ -166,48 +120,55 @@ function tp_add_menu2() {
     $pos = TEACHPRESS_MENU_POSITION;
 
     $tp_admin_all_pub_page = add_menu_page (
-            __('Publications','teachpress'), 
-            __('Publications','teachpress'), 
-            'use_teachpress', 
-            'publications.php', 
-            'tp_show_publications_page', 
-            $logo, 
+            esc_html__('Publications','teachpress'),
+            esc_html__('Publications','teachpress'),
+            'use_teachpress',
+            'publications.php',
+            'tp_show_publications_page',
+            $logo,
             $pos);
     $tp_admin_your_pub_page = add_submenu_page(
             'publications.php',
-            __('Your publications','teachpress'),
-            __('Your publications','teachpress'),
+            esc_html__('Your publications','teachpress'),
+            esc_html__('Your publications','teachpress'),
             'use_teachpress',
             'teachpress/publications.php',
             'tp_show_publications_page');
     $tp_admin_add_pub_page = add_submenu_page(
             'publications.php',
-            __('Add new', 'teachpress'), 
-            __('Add new','teachpress'),
+            esc_html__('Add new', 'teachpress'),
+            esc_html__('Add new','teachpress'),
             'use_teachpress',
             'teachpress/addpublications.php',
             'tp_add_publication_page');
     $tp_admin_import_page = add_submenu_page(
             'publications.php',
-            __('Import/Export'), 
-            __('Import/Export'), 
-            'use_teachpress', 
+            esc_html__('Import/Export'),
+            esc_html__('Import/Export'),
+            'use_teachpress',
             'teachpress/import.php',
             'tp_show_import_publication_page');
+    $tp_admin_sources_page = add_submenu_page(
+            'publications.php',
+            esc_html__('Auto-publish'),
+            esc_html__('Auto-publish'),
+            'use_teachpress',
+            'teachpress/sources.php',
+            'tp_show_publication_sources_page');
     $tp_admin_show_authors_page = add_submenu_page(
             'publications.php',
-            __('Authors', 'teachpress'),
-            __('Authors', 'teachpress'),
+            esc_html__('Authors', 'teachpress'),
+            esc_html__('Authors', 'teachpress'),
             'use_teachpress',
             'teachpress/authors.php',
-            'tp_show_authors_page');
+            array('TP_Authors_Page','init'));
     $tp_admin_edit_tags_page = add_submenu_page(
             'publications.php',
-            __('Tags'),
-            __('Tags'),
+            esc_html__('Tags'),
+            esc_html__('Tags'),
             'use_teachpress',
             'teachpress/tags.php',
-            'tp_tags_page');
+            array('TP_Tags_Page','init'));
 
     add_action("load-$tp_admin_all_pub_page", 'tp_show_publications_page_help');
     add_action("load-$tp_admin_all_pub_page", 'tp_show_publications_page_screen_options');
@@ -215,8 +176,9 @@ function tp_add_menu2() {
     add_action("load-$tp_admin_your_pub_page", 'tp_show_publications_page_screen_options');
     add_action("load-$tp_admin_add_pub_page", 'tp_add_publication_page_help');
     add_action("load-$tp_admin_import_page", 'tp_import_publication_page_help');
-    add_action("load-$tp_admin_show_authors_page", 'tp_show_authors_page_screen_options');
-    add_action("load-$tp_admin_edit_tags_page", 'tp_edit_tags_page_screen_options');
+    add_action("load-$tp_admin_sources_page", 'tp_import_publication_sources_help');
+    add_action("load-$tp_admin_show_authors_page", array('TP_Authors_Page','add_screen_options'));
+    add_action("load-$tp_admin_edit_tags_page", array('TP_Tags_Page','add_screen_options'));
 }
 
 /**
@@ -224,7 +186,28 @@ function tp_add_menu2() {
  * @since 4.2.0
  */
 function tp_add_menu_settings() {
-    add_options_page(__('teachPress Settings','teachpress'),'teachPress','administrator','teachpress/settings.php', 'tp_show_admin_settings');
+    add_options_page(esc_html__('teachPress Settings','teachpress'),'teachPress','administrator','teachpress/settings.php', array('TP_Settings_Page','load_page') );
+}
+
+/**
+ * Adds custom screen options
+ * @global type $tp_admin_show_authors_page
+ * @param string $current   Output before the custom screen options
+ * @param object $screen    WP_Screen object
+ * @return string
+ * @since 8.1
+ */
+function tp_show_screen_options($current, $screen) {
+    global $tp_admin_show_authors_page;
+
+    if( !is_object($screen) ) {
+        return $current;
+    }
+
+    // Show screen options for the authors page
+    if ( $screen->id == $tp_admin_show_authors_page ) {
+        return $current . TP_Authors_Page::print_screen_options();
+    }
 }
 
 /*****************/
@@ -234,9 +217,9 @@ function tp_add_menu_settings() {
 /**
  * Returns the current teachPress version
  * @return string
-*/
+ */
 function get_tp_version() {
-    return '8.0.2';
+    return '9.0.12';
 }
 
 /**
@@ -248,29 +231,6 @@ function get_tp_version() {
 function tp_get_wp_version () {
     global $wp_version;
     return $wp_version;
-}
-
-/**
- * Function for the integrated registration mode
- * @since 1.0.0
- */
-function tp_advanced_registration() {
-    $user = wp_get_current_user();
-    global $wpdb;
-    global $current_user;
-    $test = $wpdb->query("SELECT `wp_id` FROM " . TEACHPRESS_STUD . " WHERE `wp_id` = '$current_user->ID'");
-    if ($test == '0' && $user->ID != '0') {
-        if ($user->user_firstname == '') {
-            $user->user_firstname = $user->display_name;
-        }
-        $data = array (
-            'firstname' => $user->user_firstname,
-            'lastname' => $user->user_lastname,
-            'userlogin' => $user->user_login,
-            'email' => $user->user_email
-        );
-        TP_Students::add_student($user->ID, $data );
-    }
 }
 
 /**
@@ -312,6 +272,15 @@ function tp_db_sync($table) {
         TP_Update::fill_table_stud_meta();
     }
 }
+
+/**
+ * teachPress plugin activation
+ * @since 9.0.0
+ */
+function tp_deactivation () {
+    TP_Publication_Sources_Page::uninstall_cron();
+}
+
 
 /**
  * teachPress plugin activation
@@ -417,12 +386,12 @@ function tp_register_tinymce_js ($plugins) {
 function tp_backend_scripts() {
     $version = get_tp_version();
     $page = isset($_GET['page']) ? $_GET['page'] : '';
-    
+
     // Load scripts only, if it's a teachpress page
     if ( strpos($page, 'teachpress') === false && strpos($page, 'publications') === false ) {
         return;
     }
-    
+
     wp_enqueue_style('teachpress-print-css', plugins_url( 'styles/print.css', __FILE__ ), false, $version, 'print');
     wp_enqueue_script('teachpress-standard', plugins_url( 'js/backend.js', __FILE__ ) );
     wp_enqueue_style('teachpress.css', plugins_url( 'styles/teachpress.css', __FILE__ ), false, $version);
@@ -438,16 +407,16 @@ function tp_backend_scripts() {
     if (TEACHPRESS_LOAD_FONT_AWESOME === true) {
         wp_enqueue_style('font-awesome', plugins_url( 'includes/fontawesome/css/all.min.css', __FILE__ ) );
     }
-    
+
     /* SlimSelect v1.27 */
     wp_enqueue_script('slim-select', plugins_url( 'includes/slim-select/slimselect.min.js', __FILE__ ) );
     wp_enqueue_style('slim-select.css', plugins_url( 'includes/slim-select/slimselect.min.css', __FILE__ ) );
-    
+
     // Load jQuery + ui plugins + plupload
     wp_enqueue_script(array('jquery-ui-core', 'jquery-ui-datepicker', 'jquery-ui-resizable', 'jquery-ui-autocomplete', 'jquery-ui-sortable', 'jquery-ui-dialog', 'plupload'));
     wp_enqueue_style('teachpress-jquery-ui.css', plugins_url( 'styles/jquery.ui.css', __FILE__ ) );
     wp_enqueue_style('teachpress-jquery-ui-dialog.css', includes_url() . '/css/jquery-ui-dialog.min.css');
-    
+
     // Languages for plugins
     $current_lang = ( version_compare( tp_get_wp_version() , '4.0', '>=') ) ? get_option('WPLANG') : WPLANG;
     $array_lang = array('de_DE','it_IT','es_ES', 'sk_SK');
@@ -472,7 +441,7 @@ function tp_frontend_scripts() {
     /* tp-frontend style */
     $value = get_tp_option('stylesheet');
     if ($value == '1') {
-        echo '<link type="text/css" href="' . plugins_url( 'styles/teachpress_front.css?ver=' . $version, __FILE__ ) . '" rel="stylesheet" />' . PHP_EOL;
+        wp_enqueue_style('teachpress_front', plugins_url( 'styles/teachpress_front.css?ver=' . $version, __FILE__ ) );
     }
 
     /* altmetric support */
@@ -490,6 +459,16 @@ function tp_frontend_scripts() {
         wp_enqueue_style('font-awesome', plugins_url( 'includes/fontawesome/css/all.min.css', __FILE__ ) );
     }
 
+    /* Dimensions Badge support */
+    if ( TEACHPRESS_DIMENSIONS_SUPPORT === true ) {
+        echo '<script async' . $type_attr . ' src="https://badge.dimensions.ai/badge.js" charset="utf-8"></script>' . PHP_EOL;
+    }
+
+    /* PlumX support */
+    if ( TEACHPRESS_PLUMX_SUPPORT === true ) {
+        echo '<script' . $type_attr . ' src="https://cdn.plu.mx/widget-popup.js"></script>' . PHP_EOL;
+    }
+
     /* END */
     echo '<!-- END teachPress -->' . PHP_EOL;
 }
@@ -499,7 +478,15 @@ function tp_frontend_scripts() {
  * @since 0.30
  */
 function tp_language_support() {
-    load_plugin_textdomain('teachpress', false, dirname( plugin_basename( __FILE__ ) ) . '/languages/');
+    $domain = 'teachpress';
+    $locale = apply_filters( 'plugin_locale', determine_locale(), $domain );
+    $path = dirname( plugin_basename( __FILE__ ) ) . '/languages/';
+    $mofile = WP_PLUGIN_DIR . '/' . $path . $domain . '-' . $locale . '.mo';
+
+    // Load the plugins language files first instead of language files from WP languages directory
+    if ( !load_textdomain($domain, $mofile) ) {
+        load_plugin_textdomain($domain, false, $path);
+    }
 }
 
 /**
@@ -510,16 +497,39 @@ function tp_language_support() {
  */
 function tp_plugin_link($links, $file){
     if ($file == plugin_basename(__FILE__)) {
-        return array_merge($links, array( sprintf('<a href="options-general.php?page=teachpress/settings.php">%s</a>', __('Settings') ) ));
+        return array_merge($links, array( sprintf('<a href="options-general.php?page=teachpress/settings.php">%s</a>', esc_html__('Settings') ) ));
     }
     return $links;
 }
 
+/**
+ * This calls the proper implementation for the update source endpoint.
+ * @since 9.0.0
+ */
+function tp_rest_update_sources_hook() {
+    include_once('admin/publication-sources.php');
+    return new WP_REST_Response(tp_rest_update_sources());
+}
+
+/**
+ * This function registers REST routes to call the REST endpoints.
+ * @since 9.0.0
+ */
+function tp_rest_register_routes() {
+    $result = register_rest_route( 'teachpress/v1', '/autopublish/update_all', array(
+      'methods' => 'GET',
+      'callback' => 'tp_rest_update_sources_hook',
+      'permission_callback' => '__return_false', // change to __return_true to give access to all
+    ), true );
+}
+
 // Register WordPress-Hooks
 register_activation_hook( __FILE__, 'tp_activation');
+register_deactivation_hook( __FILE__, 'tp_deactivation' );
 add_action('init', 'tp_language_support');
 add_action('init', 'tp_feed_init');
 add_action('init', 'tp_register_all_publication_types');
+add_action('init', 'tp_register_all_awards');
 add_action('wp_ajax_teachpress', 'tp_ajax_callback');
 add_action('wp_ajax_teachpressdocman', 'tp_ajax_doc_manager_callback');
 add_action('admin_menu', 'tp_add_menu_settings');
@@ -527,6 +537,9 @@ add_action('wp_head', 'tp_frontend_scripts');
 add_action('admin_init','tp_backend_scripts');
 add_filter('plugin_action_links','tp_plugin_link', 10, 2);
 add_action('wp_ajax_tp_document_upload', 'tp_handle_document_uploads' );
+add_filter( 'screen_settings', 'tp_show_screen_options', 10, 2 );
+add_action( 'rest_api_init', 'tp_rest_register_routes' );
+add_action( TEACHPRESS_CRON_SOURCES_HOOK, 'TP_Publication_Sources_Page::tp_cron_exec' );
 
 // Register tinyMCE Plugin
 if ( version_compare( tp_get_wp_version() , '3.9', '>=') ) {
@@ -539,28 +552,15 @@ if ( TEACHPRESS_ERROR_REPORTING === true ) {
     register_activation_hook( __FILE__, 'tp_activation_error_reporting' );
 }
 
-// Register course module
-if ( TEACHPRESS_COURSE_MODULE === true ) {
-    add_action('admin_menu', 'tp_add_menu');
-    add_shortcode('tpdate', 'tp_date_shortcode');  // Deprecated
-    add_shortcode('tpcourseinfo', 'tp_courseinfo_shortcode');
-    add_shortcode('tpcoursedocs', 'tp_coursedocs_shortcode');
-    add_shortcode('tpcourselist', 'tp_courselist_shortcode');
-    add_shortcode('tpenrollments', 'tp_enrollments_shortcode');
-    add_shortcode('tppost','tp_post_shortcode');
-}
-
 // register publication module
-if ( TEACHPRESS_PUBLICATION_MODULE === true ) {
-    add_action('admin_menu', 'tp_add_menu2');
-    add_action('widgets_init', function(){ register_widget( 'TP_Books_Widget' ); });
-    add_shortcode('tpcloud', 'tp_cloud_shortcode');
-    add_shortcode('tplist', 'tp_list_shortcode');
-    add_shortcode('tpsingle', 'tp_single_shortcode');
-    add_shortcode('tpbibtex', 'tp_bibtex_shortcode');
-    add_shortcode('tpabstract', 'tp_abstract_shortcode');
-    add_shortcode('tplinks', 'tp_links_shortcode');
-    add_shortcode('tpsearch', 'tp_search_shortcode');
-    add_shortcode('tpcite', 'tp_cite_shortcode');
-    add_shortcode('tpref','tp_ref_shortcode');
-}
+add_action('admin_menu', 'tp_add_menu');
+add_action('widgets_init', function(){ register_widget( 'TP_Books_Widget' ); });
+add_shortcode('tpcloud', 'tp_cloud_shortcode');
+add_shortcode('tplist', 'tp_list_shortcode');
+add_shortcode('tpsingle', 'tp_single_shortcode');
+add_shortcode('tpbibtex', 'tp_bibtex_shortcode');
+add_shortcode('tpabstract', 'tp_abstract_shortcode');
+add_shortcode('tplinks', 'tp_links_shortcode');
+add_shortcode('tpsearch', 'tp_search_shortcode');
+add_shortcode('tpcite', 'tp_cite_shortcode');
+add_shortcode('tpref','tp_ref_shortcode');

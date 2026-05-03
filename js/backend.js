@@ -1,7 +1,7 @@
 // teachPress javascript for the admin menu
 
 /**
- * Delele node
+ * Delete node
  * @param {type} id
  * @since 5.0.0
  */
@@ -63,13 +63,13 @@ function teachpress_trim (input) {
 }
 
 /**
- * for changing the color of a label
- * @param {int} id
+ * For changing the color of a checkbox label between red and dark grey
+ * @param {string} checkbox
+ * @param {string] label
  * @since 1.0.0
+ * @version 2
  */
-function teachpress_change_label_color(id) {
-    var checkbox = "checkbox_" + id;
-    var label = "tag_label_" + id;
+function teachpress_change_label_color(checkbox, label) {
     if (document.getElementById(checkbox).checked === true) {
         document.getElementById(label).style.color = "#FF0000";
     }
@@ -203,6 +203,29 @@ function teachpress_validateForm() {
 } }
 
 /**
+ * for show/hide publication import forms
+ * @since 9.0.0
+ */
+function teachpress_importFields() {
+    var import_type = document.getElementsByName("tp_import_type")[0].value;
+    if ( import_type == 'bibtex' ) {
+        document.getElementById("div_import_bibtex").style.display = "block";
+        document.getElementById("div_import_pmid").style.display = "none";
+        document.getElementById("div_import_doi").style.display = "none";
+    }
+    if ( import_type == 'pmid' ) {
+        document.getElementById("div_import_bibtex").style.display = "none";
+        document.getElementById("div_import_pmid").style.display = "block";
+        document.getElementById("div_import_doi").style.display = "none";
+    }
+    if ( import_type == 'doi' ) {
+        document.getElementById("div_import_bibtex").style.display = "none";
+        document.getElementById("div_import_pmid").style.display = "none";
+        document.getElementById("div_import_doi").style.display = "block";
+    }
+}
+
+/**
  * for show/hide bibtex fields
  * @param {string} mode     std (= the action is called from the type select form) or 
  *                          std2 (= the action is called from the show fields buttons)
@@ -309,3 +332,45 @@ jQuery(document).ready(function() {
         tb_remove();
     };
 });
+
+/**
+ * Function to update sources table
+ * @since 9.0.0
+ */
+function teachpress_edit_sources(){
+    let $source_table = jQuery("#tp_sources_table");
+    let $source_area =jQuery("#tp_sources_area");
+    let $source_area_lbl =jQuery("#tp_sources_area_lbl");
+    let $edit_btn = jQuery("#tp_edit_sources");
+    let $cancel_btn = jQuery("#tp_sources_cancel");
+    let $save_btn = jQuery("#tp_sources_save");
+    let old_value = $source_area.text().trim();
+    $source_area.val(old_value);
+    
+    $source_area.height($source_table.height());
+    $source_table.hide();
+    $source_area.show();
+    $source_area_lbl.show();
+        
+    $save_btn.removeClass('disabled');
+    $edit_btn.addClass("disabled");
+    $cancel_btn.show();
+    $cancel_btn.on('click', function() {
+                   $source_area.val(old_value);
+                   $source_area.hide();
+                   $source_area_lbl.hide();
+                   $source_table.show();
+                   $edit_btn.removeClass('disabled');
+                   $cancel_btn.hide();
+                   $cancel_btn.off('click');
+                   });
+}
+
+/**
+* Function to make update source table saveable when changed.
+* @since 9.0.0
+*/
+function tp_source_freq_changed() {
+    let $save_btn = jQuery("#tp_sources_save");
+    $save_btn.removeClass('disabled');
+}

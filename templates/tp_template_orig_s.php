@@ -35,9 +35,10 @@ class TP_Template_Orig_S implements TP_Publication_Template {
      * @return string
      */
     public function get_headline ($content, $args = array()) {
+        $id = ( isset( $args['id'] ) ) ? $args['id'] : $content;
         return '<tr>
                     <td' . $args['colspan'] . '>
-                        <h3 class="tp_h3" id="tp_h3_' . esc_attr($content) .'">' . $content . '</h3>
+                        <h3 class="tp_h3" id="tp_h3_' . esc_attr($id) .'">' . $content . '</h3>
                     </td>
                 </tr>';
     }
@@ -49,9 +50,10 @@ class TP_Template_Orig_S implements TP_Publication_Template {
      * @return string
      */
     public function get_headline_sl ($content, $args = array()) {
+        $id = ( isset( $args['id'] ) ) ? $args['id'] : $content;
         return '<tr>
                     <td' . $args['colspan'] . '>
-                        <h4 class="tp_h4" id="tp_h4_' . esc_attr($content) .'">' . $content . '</h4>
+                        <h4 class="tp_h4" id="tp_h4_' . esc_attr($id) .'">' . $content . '</h4>
                     </td>
                 </tr>';
     }
@@ -83,7 +85,7 @@ class TP_Template_Orig_S implements TP_Publication_Template {
         // $s .= '<span class="tp_pub_year_simple"> (' . $interface->get_year() . ')</span>: ';
         $s .= '<span class="tp_pub_title_simple">' . $interface->get_title() . '</span>. ';
         $s .= '<span class="tp_pub_additional_simple">' . $interface->get_meta() . '</span> ';
-        $s .= '<span class="tp_pub_menu_simple">(' . __('Type','teachpress') . ': ' . $interface->get_type() . ' | ' . $interface->get_menu_line() . ')</span>';
+        $s .= '<span class="tp_pub_menu_simple">(' . esc_html__('Type','teachpress') . ': ' . $interface->get_type() . ' | ' . $interface->get_menu_line() . ')</span>';
         $s .= $interface->get_infocontainer();
         $s .= $interface->get_images('bottom');
         $s .= '</td>';

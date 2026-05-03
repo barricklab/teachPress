@@ -16,16 +16,305 @@
 class TP_Bibtex {
 
     /**
+     * This maps escaped bibtex codes to their corresponding characters. This mapping
+     * was derived from Matthias Steffens' and Christian Spitzlay's, from the module
+     * bibtexParse, created by Mark Grimshaw and Guillaume Gardey.
+     * http://bibliophile.sourceforge.net
+     * https://git.drupalcode.org/project/biblio/-/blob/7.x-1.x/modules/bibtexParse/transtab_latex_unicode.inc.php
+     *
+     * The original implementation was more robust and used regular expressions, compensating
+     * for extra spaces in codes such as {\v t} (e.g. {\v         t}).
+     *
+     * The replacements will be made in order, so it is best to put the longest
+     * sequences (keys) first, e.g. \\infty before \\i.
+     */
+    public static $bibtex_char_mapping = array(
+        '---'                    => '—',
+        '--'                     => '–',
+
+        "\\texteuro"             => "€",
+        "\\textcelsius"          => "℃",
+        "\\textnumero"           => "№",
+        "\\textcircledP"         => "℗",
+        "\\textservicemark"      => "℠",
+        "\\texttrademark"        => "™",
+        "\\textohm"              => "Ω",
+        "\\textestimated"        => "℮",
+        "\\textleftarrow"        => "←",
+        "\\textuparrow"          => "↑",
+        "\\textrightarrow"       => "→",
+        "\\textdownarrow"        => "↓",
+        "$\\infty$"              => "∞",
+        "\\textlangle"           => "〈",
+        "\\textrangle"           => "〉",
+        "\\textvisiblespace"     => "␣",
+        "\\textopenbullet"       => "◦",
+        "\\textflorin"           => "ƒ",
+        "\\textasciicircum"      => "ˆ",
+        "\\textacutedbl"         => "˝",
+        "\\textendash"           => "–",
+        "\\textemdash"           => "—",
+        "\\textbardbl"           => "‖",
+        "\\textunderscore"       => "‗",
+        "\\textquoteleft"        => "‘",
+        "\\textquoteright"       => "’",
+        "\\quotesinglbase"       => "‚",
+        "\\textquotedblleft"     => "“",
+        "\\textquotedblright"    => "”",
+        "\\quotedblbase"         => "„",
+        "\\textdaggerdbl"        => "‡",
+        "\\textdagger"           => "†",
+        "\\textbullet"           => "•",
+        "\\textellipsis"         => "…",
+        "\\ldots"                => "…",
+        "\\textperthousand"      => "‰",
+        "\\guilsinglleft"        => "‹",
+        "\\guilsinglright"       => "›",
+        "\\textfractionsolidus"  => "⁄",
+        "\\textdiv"              => "÷",
+        "\\textexclamdown"       => "¡",
+        "\\textcent"             => "¢",
+        "\\textsterling"         => "£",
+        "\\textyen"              => "¥",
+        "\\textbrokenbar"        => "¦",
+        "\\textsection"          => "§",
+        "\\textasciidieresis"    => "¨",
+        "\\textcopyright"        => "©",
+        "\\copyright"            => "©",
+        "\\textordfeminine"      => "ª",
+        "\\guillemotleft"        => "«",
+        "\\textlnot"             => "¬",
+        "\\textregistered"       => "®",
+        "\\textasciimacron"      => "¯",
+        "\\textdegree"           => "°",
+        "\\textpm"               => "±",
+        "\\texttwosuperior"      => "²",
+        "\\textthreesuperior"    => "³",
+        "\\textasciiacute"       => "´",
+        "\\textmu"               => "µ",
+        "\\textparagraph"        => "¶",
+        "\\textperiodcentered"   => "·",
+        "\\textonesuperior"      => "¹",
+        "\\textordmasculine"     => "º",
+        "\\guillemotright"       => "»",
+        "\\textonequarter"       => "¼",
+        "\\textonehalf"          => "½",
+        "\\textthreequarters"    => "¾",
+        "\\textquestiondown"     => "¿",
+        "\\texttimes"            => "×",
+        "\\textgreater"          => ">",
+        "\\textless"             => "<",
+
+       "$\\alpha$"                => "α",
+       "$\\beta$"                 => "β",
+       "$\\gamma$"                => "γ",
+       "$\\delta$"                => "δ",
+       "$\\epsilon$"              => "ε",
+       "$\\zeta$"                 => "ζ",
+       "$\\eta$"                  => "η",
+       "$\\theta$"                => "θ",
+       "$\\iota$"                 => "ι",
+       "$\\kappa$"                => "κ",
+       "$\\lambda$"               => "λ",
+       "$\\mu$"                   => "μ",
+       "$\\nu$"                   => "ν",
+       "$\\omicron$"              => "o",
+       "$\\xi$"                   => "ξ",
+       "$\\pi$"                   => "π",
+       "$\\rho$"                  => "ρ",
+       "$\\sigma$"                => "σ",
+       "$\\tau$"                  => "τ",
+       "$\\upsilon$"              => "υ",
+       "$\\phi$"                  => "φ",
+       "$\\chi$"                  => "χ",
+       "$\\psi$"                  => "ψ",
+       "$\\omega$"                => "ω",
+       "$\\Gamma$"                => "Γ",
+       "$\\Delta$"                => "Δ",
+       "$\\Theta$"                => "Θ",
+       "$\\Lambda$"               => "Λ",
+       "$\\Xi$"                   => "Ξ",
+       "$\\Pi$"                   => "Π",
+       "$\\Sigma$"                => "Σ",
+       "$\\Upsilon$"              => "Υ",
+       "$\\Ypsilon$"              => "Υ",
+       "$\\Phi$"                  => "Φ",
+       "$\\Psi$"                  => "Ψ",
+       "$\\Omega$"                => "Ω",
+       "$\\varepsilon$"           => "ε",
+       "$\\varphi$"               => "φ",
+       "$\\varsigma$"             => "ς",
+                                               
+        "\\AA"                   => "Å",
+        "\\aa"                   => "å",
+        "\\AE"                   => "Æ",
+        "\\ae"                   => "æ",
+        "\\DH"                   => "Ð",
+        "\\dh"                   => "ð",
+        "\\DJ"                   => "Đ",
+        "\\dj"                   => "đ",
+        "\\NG"                   => "Ŋ",
+        "\\ng"                   => "ŋ",
+        "\\O"                    => "Ø",
+        "\\o"                    => "ø",
+        "\\OE"                   => "Œ",
+        "\\oe"                   => "œ",
+        "\\pm"                   => "±",
+        "\\TH"                   => "Þ",
+        "\\th"                   => "þ",
+        "\\ss"                   => "ß",
+                                               
+        "\\#"                    => '#',
+        "\\$"                    => '$',
+        "\\%"                    => '%',
+        "\\&"                    => '&',
+
+        "\\`A"                   => "À",
+        "\\'A"                   => "Á",
+        "\\^A"                   => "Â",
+        "\\~A"                   => "Ã",
+        "\\\"A"                  => "Ä",
+        "\\`E"                   => "È",
+        "\\'E"                   => "É",
+        "\\^E"                   => "Ê",
+        "\\\"E"                  => "Ë",
+        "\\`I"                   => "Ì",
+        "\\'I"                   => "Í",
+        "\\^I"                   => "Î",
+        "\\\"I"                  => "Ï",
+        "\\~N"                   => "Ñ",
+        "\\'N"                   => "Ń",
+        "\\'n"                   => "ń",
+        "\\`O"                   => "Ò",
+        "\\'O"                   => "Ó",
+        "\\^O"                   => "Ô",
+        "\\~O"                   => "Õ",
+        "\\\"O"                  => "Ö",
+        "\\`U"                   => "Ù",
+        "\\'U"                   => "Ú",
+        "\\^U"                   => "Û",
+        "\\\"U"                  => "Ü",
+        "\\'Y"                   => "Ý",
+        "\\`a"                   => "à",
+        "\\'a"                   => "á",
+        "\\^a"                   => "â",
+        "\\~a"                   => "ã",
+        "\\\"a"                  => "ä",
+        "\\`e"                   => "è",
+        "\\'e"                   => "é",
+        "\\^e"                   => "ê",
+        "\\\"e"                  => "ë",
+        "\\`i"                   => "ì",
+        "\\^i"                   => "î",
+        "\\\"\\i"                => "ï",
+        "\\\"i"                  => "ï",
+        "\\~n"                   => "ñ",
+        "\\`o"                   => "ò",
+        "\\'o"                   => "ó",
+        "\\^o"                   => "ô",
+        "\\~o"                   => "õ",
+        "\\\"o"                  => "ö",
+        "\\=o"                   => "ō",
+        "\\`u"                   => "ù",
+        "\\'u"                   => "ú",
+        "\\^u"                   => "û",
+        "\\\"u"                  => "ü",
+        "\\'y"                   => "ý",
+        "\\\"y"                  => "ÿ",
+        "\\'C"                   => "Ć",
+        "\\'c"                   => "ć",
+        "\\.g"                   => "ġ",
+        "\\.I"                   => "İ",
+        "\\'\\i"                 => "í",
+        "\\'i"                   => "í",
+        "\\'L"                   => "Ĺ",
+        "\\'l"                   => "ĺ",
+        "\\'R"                   => "Ŕ",
+        "\\'r"                   => "ŕ",
+        "\\'S"                   => "Ś",
+        "\\'s"                   => "ś",
+        "\\S"                    => "§",
+        "\\\"Y"                  => "Ÿ",
+        "\\'Z"                   => "Ź",
+        "\\'z"                   => "ź",
+        "\\.Z"                   => "Ż",
+        "\\.z"                   => "ż",
+        "\\v L"                  => "Ľ",
+        "\\v l"                  => "ľ",
+        "\\r A"                  => "Å",
+        "\\c C"                  => "Ç",
+        "\\r a"                  => "å",
+        "\\c c"                  => "ç",
+        "\\u A"                  => "Ă",
+        "\\u a"                  => "ă",
+        "\\k A"                  => "Ą",
+        "\\k a"                  => "ą",
+        "\\v C"                  => "Č",
+        "\\v c"                  => "č",
+        "\\v D"                  => "Ď",
+        "\\v d"                  => "ď",
+        "\\k E"                  => "Ę",
+        "\\k e"                  => "ę",
+        "\\v E"                  => "Ě",
+        "\\v e"                  => "ě",
+        "\\u e"                  => "ĕ",
+        "\\u G"                  => "Ğ",
+        "\\u g"                  => "ğ",
+        "\\v N"                  => "Ň",
+        "\\v n"                  => "ň",
+        "\\H O"                  => "Ő",
+        "\\H o"                  => "ő",
+        "\\v R"                  => "Ř",
+        "\\v r"                  => "ř",
+        "\\c S"                  => "Ş",
+        "\\c s"                  => "ş",
+        "\\v S"                  => "Š",
+        "\\v s"                  => "š",
+        "\\c T"                  => "Ţ",
+        "\\c t"                  => "ţ",
+        "\\v T"                  => "Ť",
+        "\\v t"                  => "ť",
+        "\\r U"                  => "Ů",
+        "\\r u"                  => "ů",
+        "\\H U"                  => "Ű",
+        "\\H u"                  => "ű",
+        "\\v Z"                  => "Ž",
+        "\\v z"                  => "ž",
+   
+        // later in the dict so that they don't match longer entries like "\\'\\i"
+        "\\i"                    => "ı",
+        "\\L"                    => "Ł",
+        "\\l"                    => "ł",
+                                               
+        // for custom latex packages like ngerman
+        "\\glqq"                 => "„",
+        "\\grqq"                 => "“",
+        "\\flqq"                 => "«",
+        "\\frqq"                 => "»",
+        "\\flq"                  => "‹",
+        "\\frq"                  => "›",
+        "\\glq"                  => "‚",
+        "\\grq"                  => "‘",
+        "\\dq"                   => "",
+
+        // a few minor customizations...
+        "\\varepsilon"           => "ε",
+        "\\varphi"               => "φ",
+        "\\varsigma"             => "ς",
+                                               );
+    
+    /**
      * Gets a single publication in bibtex format
      * @param array $row
      * @param array $all_tags               optional
      * @param boolean $convert_bibtex       Flag for the utf-8 to TeX char convertion, Default is false
+     * @param boolean $private_comment      Flag for adding private notes or not, Default is false
      * @return string
      * @since 3.0.0
     */
-    public static function get_single_publication_bibtex ($row, $all_tags = '', $convert_bibtex = false) {
+    public static function get_single_publication_bibtex ($row, $all_tags = '', $convert_bibtex = false, $private_comment = false) {
         $string = '';
-        $pub_fields = array('type', 'bibtex', 'title', 'author', 'editor', 'url', 'doi', 'isbn', 'date', 'urldate', 'booktitle', 'issuetitle', 'journal', 'volume', 'number', 'pages', 'publisher', 'address', 'edition', 'chapter', 'institution', 'organization', 'school', 'series', 'crossref', 'abstract', 'howpublished', 'key', 'techtype', 'note');
+        $pub_fields = ['type', 'bibtex', 'title', 'author', 'editor', 'url', 'doi', 'isbn', 'date', 'urldate', 'booktitle', 'issuetitle', 'journal', 'volume', 'number', 'issue', 'pages', 'publisher', 'address', 'edition', 'chapter', 'institution', 'organization', 'school', 'series', 'crossref', 'abstract', 'howpublished', 'key', 'techtype', 'note'];
         $isbn_label = ( $row['is_isbn'] == 1 ) ? 'isbn' : 'issn';
         
         // initial string
@@ -38,39 +327,39 @@ class TP_Bibtex {
         
         // loop for all BibTeX fields
         for ( $i = 2; $i < count($pub_fields); $i++ ) {
-            // replace html chars
-            if ( $pub_fields[$i] === 'author' || $pub_fields[$i] === 'title' ) {
-                $row[$pub_fields[$i]] = TP_HTML::convert_special_chars($row[$pub_fields[$i]]);
-            }
             // go to the next if there is nothing
             if ( !isset( $row[$pub_fields[$i]] ) || $row[$pub_fields[$i]] == '' || $row[$pub_fields[$i]] == '0000-00-00'  ) {
                 continue;
             }
+            
+            $field_name = $pub_fields[$i];
+            $field_value = TP_HTML::convert_special_chars( stripslashes( $row[$pub_fields[$i]] ) );
+           
             // prepare the fields
             // ISBN | ISSN
-            if ( $pub_fields[$i] === 'isbn' ) {
-                $string .= $isbn_label . ' = {' . $row[$pub_fields[$i]] . '},' . chr(13) . chr(10);
+            if ( $field_name === 'isbn' ) {
+                $string .= $isbn_label . ' = {' . $field_value . '},' . chr(13) . chr(10);
             }
             // year
-            elseif ( $pub_fields[$i] === 'date' ) {
+            elseif ( $field_name === 'date' ) {
                 $string .= 'year  = {' . $row['year'] . '},' . chr(13) . chr(10);
-                $string .= TP_Bibtex::prepare_bibtex_line($row[$pub_fields[$i]],$pub_fields[$i]);
+                $string .= TP_Bibtex::prepare_bibtex_line($field_value, $field_name);
             }
             // techtype
-            elseif ( $pub_fields[$i] === 'techtype' ) {
-                $string .= 'type = {' . $row[$pub_fields[$i]] . '},' . chr(13) . chr(10);
+            elseif ( $field_name=== 'techtype' ) {
+                $string .= 'type = {' . $field_value . '},' . chr(13) . chr(10);
             }
             // patent: use address as location
-            elseif ( $pub_fields[$i] === 'address' && $row['type']  === 'patent' ) {
-                $string .= 'location = {' . $row[$pub_fields[$i]] . '},' . chr(13) . chr(10);
+            elseif ( $field_name=== 'address' && $row['type']  === 'patent' ) {
+                $string .= 'location = {' . $field_value . '},' . chr(13) . chr(10);
             }
             // abstract
-            elseif ( $pub_fields[$i] === 'abstract' || $pub_fields[$i] === 'title' ) {
-                $string .= TP_Bibtex::prepare_text($row[$pub_fields[$i]], $pub_fields[$i]);
+            elseif ( $field_name === 'abstract' || $field_name === 'title' ) {
+                $string .= TP_Bibtex::prepare_text($field_value, $field_name);
             }
             // normal case
             else {
-                $string .= TP_Bibtex::prepare_bibtex_line($row[$pub_fields[$i]],$pub_fields[$i]);
+                $string .= TP_Bibtex::prepare_bibtex_line($field_value, $field_name);
             }
             
         }
@@ -93,6 +382,12 @@ class TP_Bibtex {
             $string .= 'keywords = {}';
         }
         
+        // Add private comment
+        if ( $private_comment === true ) {
+            $string .= ',' . chr(13) . chr(10);
+            $string .= 'annote = {' . TP_HTML::convert_special_chars( stripslashes($row['comment'])) . '}';
+        }
+        
         // Add teachPress/biblatex extensions
         $string .= ',' . chr(13) . chr(10);
         $string .= 'pubstate = {' . $row['status'] . '},' . chr(13) . chr(10);
@@ -107,6 +402,37 @@ class TP_Bibtex {
     }
 
     /**
+     * Heuristics to check if the input is BibTeX. May be useful when handling
+     * potentially problematic content, i.e. automatically downloaded from URLs.
+     *
+     * @param string $input
+     * @return false iff $input is very probably not BibTeX format. False positives are
+     *         possible.
+     * @ince 9.0.0
+     * @access public
+     */
+    public static function looks_like_bibtex ($input) {
+        $lines = preg_split("/\r\n|\n|\r/", $input);
+        $result = $lines !== false;
+        
+        if ($result) {
+            $lines = array_filter($lines, function ($l) {
+                                  $l = trim($l);
+                                  return strlen($l) > 0 && substr($l, 0, 1) != "%"; });
+            
+            if ($result && count($lines) > 0) {
+                $first_char = substr(trim(reset($lines)), 0, 1);
+                $last_line = trim(end($lines));
+                $last_char = substr($last_line, strlen($last_line) - 1, 1);
+                
+                $result = $first_char == "@" && $last_char == "}";
+            }
+        }
+        
+        return $result;
+    }
+    
+    /**
      * Replaces some BibTeX special chars with the UTF-8 versions and secures the input. 
      * Before teachPress 5.0, this function was called replace_bibtex_chars()
      * 
@@ -120,33 +446,21 @@ class TP_Bibtex {
         // return the input if there are no bibtex chars
         if ( strpos( $input,'\\' ) === false && strpos($input,'{') === false ) { return $input; }
         
-        // Step 1: Chars which based on a combination of two chars, delete escapes
-        $array_a = array("\'a","\'A",'\"a','\"A',
-                         "\'e","\'E",
-                         "\'i",
-                         "\'o","\'O",'\"o','\"O',
-                         '\"u','\"U','\ss',
-                         '\L','\l','\AE','\ae','\OE','\oe','\t{oo}','\O','\o',
-                         '\textendash','\textemdash','\glqq','\grqq','\flqq','\frqq','\flq','\frq','\glq','\grq','\dq',chr(92));
-        $array_b = array('á','Á','ä','Ä',
-                         'é','É',
-                         'í',
-                         'ó','Ó',
-                         'ö','Ö',
-                         'ü','Ü','ß',
-                         'Ł','ł','Æ','æ','Œ','œ','o͡o','Ø','ø',
-                         '–','—','„','“','«','»','‹','›','‚','‘','','');
-        $input = str_replace( $array_a , $array_b ,$input);
+        // Step 1: Chars which are based on a combination of chars, with escapes
+        $input = str_replace( array_keys(TP_Bibtex::$bibtex_char_mapping), array_values(TP_Bibtex::$bibtex_char_mapping), $input);
         
-        // Step 2: All over special chars 
+        // Step 1b: Remove backslash
+        $input = str_replace( '\\', '', $input );
+
+        // Step 2: All other special chars 
         $array_1 = array('"{a}','"{A}','`{a}','`{A}',"'{a}","'{A}",'~{a}','~{A}','={a}','={A}','^{a}','^{A}','u{a}','u{A}','k{a}','k{A}','r{a}','r{A}','{aa}','{AA}',
                          '.{b}','.{B}',
                          "'{c}","'{C}",'v{c}','v{C}','c{c}','c{C}','.{c}','.{C}','^{c}','^{C}',
-                         'v{d}','v{D}','.{d}','.{D}','d{d}','d{D}','{d}','{D}',
+                         'v{d}','v{D}','.{d}','.{D}','d{d}','d{D}','B{d}','B{D}',
                          '"{e}','"{E}',"'{e}","'{E}",'`{e}','`{E}','^{e}','^{E}','u{e}','u{E}','v{e}','v{E}','={e}','={E}','k{e}','k{E}','.{e}','.{E}',
                          '.{f}','.{F}',
                          'u{g}','u{G}','c{g}','c{G}','.{g}','.{G}','^{g}','^{G}',
-                         '.{h}','.{H}','d{h}','d{H}','^{h}','^{H}','{h}','{H}',
+                         '.{h}','.{H}','d{h}','d{H}','^{h}','^{H}','B{h}','B{H}',
                          '"{i}','"{I}','~{i}','~{I}','`{i}','`{I}',"'{i}","'{I}",'^{i}','^{I}','u{i}','u{I}','={i}','={I}','k{i}','k{I}','.{i}','.{I}',
                          '^{j}','^{J}',
                          'c{k}','c{K}','d{k}','d{K}',
@@ -157,7 +471,7 @@ class TP_Bibtex {
                          '.{p}','.{P}',
                          "'{r}","'{R}",'v{r}','v{R}','c{r}','c{R}','.{r}','.{R}','d{r}','d{R}',
                          "'{s}","'{S}",'v{s}','v{S}','c{s}','c{S}','.{s}','.{S}','d{s}','d{S}','^{s}','^{S}',
-                         'v{t}','v{T}','c{t}','c{T}','.{t}','.{T}','d{t}','d{T}','{t}','{T}',
+                         'v{t}','v{T}','c{t}','c{T}','.{t}','.{T}','d{t}','d{T}','B{t}','B{T}',
                          '"{u}','"{U}','`{u}','`{U}',"'{u}","'{U}",'^{u}','^{U}','d{u}','d{U}','~{u}','~{U}','u{u}','u{U}','={u}','={U}','k{u}','k{U}','r{u}','r{U}','H{u}','H{U}',
                          'd{v}','d{V}',
                          '^{w}','^{W}',
@@ -192,7 +506,7 @@ class TP_Bibtex {
     }
     
     /**
-     * Cleans the author names after bibtex to UTF-8 convertion
+     * Cleans the author names after bibtex to UTF-8 conversion
      * @param string $input
      * @return string
      * @since 6.1.0
@@ -243,7 +557,7 @@ class TP_Bibtex {
                          'ŵ','Ŵ',
                          'ÿ','Ÿ','ý','Ý','ŷ','Ŷ',
                          'ź','Ź','ž','Ž','ż','Ż',
-                         'ß','Ø','ø','Ł','ł','Æ','æ','Œ','œ','o͡o','–','—');
+                         'ß','&','Ø','ø','Ł','ł','Æ','æ','Œ','œ','o͡o','–','—');
         
         $array_b = array('\"{a}', '\"{A}', '\`{a}', '\`{A}', "\'{a}", "\'{A}", '\^{a}', '\^{A}', '\~{a}', '\~{A}', '\k{a}', '\k{A}', '\={a}', '\={A}', '\u{a}', '\u{A}', 'r{a}', 'r{A}',
                          '\.{b}', '\.{B}',
@@ -269,7 +583,7 @@ class TP_Bibtex {
                          '\^{w}', '\^{W}',
                          '\"{y}', '\"{Y}', "\'{y}", "\'{Y}", '\^{y}', '\^{Y}',
                          "\'{z}", "\'{Z}", '\v{z}', '\v{Z}', '\.{z}', '\.{Z}',
-                         '\ss', '\O', '\o', '\L', '\l', '\AE', '\ae', '\OE', '\oe', '\t{oo}', '\textendash', '\textemdash'
+                         '\ss', '\&','\O', '\o', '\L', '\l', '\AE', '\ae', '\OE', '\oe', '\t{oo}', '\textendash', '\textemdash'
                         );
         $return = str_replace( $array_a , $array_b ,$input);
         return $return;
@@ -287,7 +601,7 @@ class TP_Bibtex {
             return '';
         }
         
-        $text = htmlspecialchars_decode($text);
+        $text = TP_HTML::prepare_title($text);
         // Replace expressions
         $search = array ('/<sub>/i', '/<sup>/i',
                          '/<i>/i', '/<b>/i', '/<em>/i', '/<u>/i', 

@@ -47,8 +47,9 @@ function tp_ajax_callback () {
          * Works if $_GET['del_document'] is given
          */
         $del_document = ( isset( $_GET['del_document'] ) ) ? intval( $_GET['del_document'] ) : 0;
+        $nonce = ( isset( $_GET['nonce'] ) ) ? intval( $_GET['nonce'] ) : '';
         if ( $del_document !== 0 ) {
-            TP_Ajax::delete_document($del_document);
+            TP_Ajax::delete_document($del_document, $nonce);
         }
 
         /**
@@ -56,7 +57,7 @@ function tp_ajax_callback () {
          * Works if $_GET['add_document'] and $_GET['course_id'] are given
          */
         $add_document = ( isset( $_GET['add_document'] ) ) ? htmlspecialchars( $_GET['add_document'] ) : '';
-        $course_id = ( isset( $_GET['course_id'] ) ) ? intval($_GET['course_id']) : 0;
+        $course_id = ( isset( $_GET['course_id'] ) ) ? intval( $_GET['course_id'] ) : 0;
         if ( $add_document !== '' && $course_id !== 0 ) {
             TP_Ajax::add_document_headline($add_document, $course_id);
         }
@@ -85,7 +86,8 @@ function tp_ajax_callback () {
          * Works if $_POST['tp_file'] is given
          */
         if ( isset( $_POST['tp_file'] ) ) {
-            TP_Ajax::set_sort_order($_POST['tp_file']);
+            $order = is_array( $_POST['tp_file'] ) ? $_POST['tp_file'] : [];
+            TP_Ajax::set_sort_order($order);
         }
 
         /**
@@ -93,7 +95,8 @@ function tp_ajax_callback () {
          * Works if $_GET['mimetype_input'] is given
          */
         if ( isset( $_GET['mimetype_input'] ) ) {
-            TP_Ajax::get_mimetype_image($_GET['mimetype_input']);
+            $mimetype = htmlspecialchars( $_GET['mimetype_input'] );
+            TP_Ajax::get_mimetype_image($mimetype);
         }
 
         /**
@@ -101,7 +104,8 @@ function tp_ajax_callback () {
          * @since 6.0.0
          */
         if ( isset( $_GET['cite_id'] ) ) {
-            TP_Ajax::get_cite_screen($_GET['cite_id']);
+            $cite_id = intval( $_GET['cite_id'] );
+            TP_Ajax::get_cite_screen($cite_id);
         }
 
         /**
@@ -109,7 +113,9 @@ function tp_ajax_callback () {
          * @since 6.0.0
          */
         if ( isset( $_GET['cite_pub'] ) && isset( $_GET['cite_type'] )  ) {
-            TP_Ajax::get_cite_text($_GET['cite_pub'], $_GET['cite_type']);
+            $cite_pub = intval( $_GET['cite_pub'] );
+            $cite_text = ( $_GET['cite_type'] === 'bibtex' ) ? 'bibtex' : 'text';
+            TP_Ajax::get_cite_text($cite_pub, $cite_text);
         }
         
         /**
@@ -126,7 +132,8 @@ function tp_ajax_callback () {
          * @since 6.1.1
          */
         if ( isset ( $_GET['bibtex_key_check'] ) ) {
-            TP_Ajax::get_generated_bibtex_key($_GET['bibtex_key_check']);
+            $key = htmlspecialchars( $_GET['bibtex_key_check'] );
+            TP_Ajax::get_generated_bibtex_key( $key );
         }
 
     }

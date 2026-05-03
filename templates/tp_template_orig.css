@@ -1,8 +1,15 @@
 /**
  * Template: teachpress original
- * Version: 1.2
+ * Version: 1.3
  * Author: Michael Winkler
 */
+.tp_bibtex_entry {
+    font-size:0.8rem;}
+.tp_bibtex_entry pre {
+    white-space: normal;
+    word-wrap: break-word;}
+.tp_abstract_entry {
+    font-size: 0.9rem;}
 td.tp_pub_info {
     border-bottom:1px solid silver; 
     vertical-align:top; 
@@ -42,3 +49,7 @@ td.tp_pub_info {
 .tp_pub_link_image {
     max-width: 2em; 
     max-height: 2em;}
+.tp_close {
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.9rem; }

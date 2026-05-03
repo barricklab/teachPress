@@ -1,27 +1,26 @@
 === teachPress ===
 Contributors: Michael Winkler
-Tags: publications, enrollments, education, courses, BibTeX, bibliography
+Tags: publications, bibliography, BibTeX
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Requires at least: 3.9
-Tested up to: 5.8
-Requires PHP: 5.4
-Stable tag: 8.0.2
+Tested up to: 6.9.4
+Requires PHP: 7.4
+Stable tag: 9.0.13
 
-Manage your courses and publications with teachPress 
+Manage your publications with teachPress 
 
 == Description ==
-This plugin unites a course management system (with modules for enrollments, documents and assessments) and a powerful BibTeX compatible publication management. Both modules can be operated independently. teachPress is optimized for the needs of professorships and research groups. You can use it with WordPress 3.9.0 or higher.
+This plugin is a powerful BibTeX compatible multi user publication management for WordPress. teachPress adds an own separate database to your WordPress installation which gives you the opportunity to handle hundreds of publications from different users. You can use it with WordPress 3.9.0 or higher.
 
 = Features: =
 * BibTeX compatible multi user publication management
 * BibTeX import for publications
 * BibTeX and RTF export for publications
-* RSS feed for publications
-* Course management with integrated modules for enrollments, assessments and documents
-* XLS/CSV export for course lists
-* Many shortcodes for an easy using of publication lists, publication searches, enrollments and course overviews
-* Dymamic meta data system for courses, students and publications
+* Direct data import from NCBI PubMed and Crossref.org
+* RSS feeds for publications
+* Many shortcodes for an easy using of publication lists, publication searches or for text references
+* Dymamic meta data system for adding new custom fields to publication entries
 
 = Supported Languages =
 * English
@@ -35,6 +34,9 @@ This plugin unites a course management system (with modules for enrollments, doc
 
 (o) Incomplete language files
 
+= Note =
+Due to the fact that the most teachpress users uses only the publication module, the course management modul is no longer a part of the default plugin. It's now separatly available over GitHub.
+
 = Start with teachPress =
 The following article describes the fist steps for [starting with teachPress](https://github.com/winkm89/teachPress/wiki/Start-with-teachPress).
 
@@ -46,9 +48,10 @@ The following article describes the fist steps for [starting with teachPress](ht
 == Screenshots ==
 1. Publication overview screen
 2. Add publication screen
-3. Add course screen
-4. Single course menu
-5. Example for a publication list created with [tpcloud]
+3. Example for a publication list created with [tpcloud]
+4. Example for a publication list created with [tpsearch]
+5. Example for a reference list created with [tpcite] and [tpref]
+6. Import publications screen
 
 == Frequently Asked Questions ==
 
@@ -61,17 +64,11 @@ Use the shortcode with the following parameters: [tp_cloud show_tags_as="none"]
 = How can I display images in publication lists? =
 An example: [tplist image="left" image_size="70"]. Important: You must specify both image parameters.
 
-= How can I add longer course desciptions? =
-Write a long course desciption as normal WordPress pages and add this page as related content to the course.
-
-= How can I protect course documents? =
-The plugin saves course documents in your WordPress upload directory under /teachpress/*course_id*. You can add a protection for this directory with a .htaccess file without influence to your normal media files.
-
 [More FAQs are available on GitHub](https://github.com/winkm89/teachPress/wiki/FAQ)
 
 == Credits ==
 
-Copyright 2008-2021 by Michael Winkler
+Copyright 2008-2026 by Michael Winkler
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -115,7 +112,7 @@ Use at your own risk. No warranty expressed or implied is provided.
 1. Download the plugin.
 2. Delete all files in the 'plugins/teachpress/' directory.
 3. Upload all files to the 'plugins/teachpress/' directory.
-4. Go in the backend to Courses->Settings and click on "Update to ....".
+4. Go in the backend to Publications and click on the update message on the screen.
 
 == Upgrade Notice ==
 
@@ -126,6 +123,150 @@ Please note that custom publication templates now requires the method get_image(
 Please note the [teachPress 6.0 Upgrade Information](https://mtrv.wordpress.com/2016/12/30/teachpress-6-0-upgrade-information/)
 
 == Changelog ==
+
+= 9.0.13 (11.04.2026) =
+* New: [tpcloud, tplist, tpsearch]: New parameter "show_abstract" (#277)
+* New: [tpcloud, tplist, tpsearch]: New parameter "show_altmetric_type" Available badge types: donut, medium-donut, large-donut, bar, medium-bar, large-bar (#107) (Thanks to epikentros)
+* Changed: [tpcloud, tplist, tpsearch]: Parameter "show_altmetric_donut" is deprecated
+* Bugfix: [tpcite]: Better handling of not existing cite references
+* Bugfix: Fix for CVE-2026-22353 (#279)
+* Bugfix: Fix for CVE-2026-22483
+
+= 9.0.12 (07.04.2025) =
+* Bugfix: Fix an authenticated (Contributor) SQL Injection issue
+
+= 9.0.11 (22.03.2025) =
+* Bugfix: Change used gettext functions
+
+= 9.0.10 (20.03.2025) =
+* Bugfix: Fixes another CSRF vulnerability in tp import dialog (CVE-2025-1320) (Thanks to Krzysztof Zając for reporting)
+
+= 9.0.9 (11.03.2025) =
+* Bugfix: Fix space handling in bibtex keys within publication exists check (#267)
+* Bugfix: Unknown column 'r.name' in 'where clause' error in function TP:Authors::get_authors() (#262)
+
+= 9.0.8 (25.02.2025) =
+* Bugfix: Fix an authenticated (Contributor) SQL Injection issue (CVE-2025-1321	) (Thanks to Krzysztof Zając for reporting)
+
+= 9.0.7 (18.01.2025) =
+* New: Meta keys search to shortcodes added (Thanks to Juma7C9) (#259)
+* New: [tpcloud, tplist, tpsearch]: Optional private comment box for publication entries (Thanks to Juma7C9) (#257)
+* New: [tpcloud, tplist, tpsearch]: New parameters "show_comment", "comment_text", "comment_tooltip" added 
+* New: Author search by name for API calls added  (Thanks to Juma7C9) (#258)
+* New: BibTeX export option for private comments as annote field added (#263)
+* New: BibTeX export option for chars conversion added (#265)
+* New: Number of publications (ASC or DESC) as sorting options in authors screen added (#264)
+* Bugfix: Fix nonce checks on meta settings page (#254)
+* Bugfix: Fix warning "Deprecated Creation of dynamic property" - PHP 8.2  (Thanks to rgarofalo) (#256)
+* Bugfix: [tpsingle, tpbibtex]: Fix PHP errors if there is no publication to display
+* Bugfix: Fix possible usage of missing objects in crossref import
+
+= 9.0.6 (28.11.2023) =
+* New: Added OSF logo to the links (Thanks to Sven Mayer)
+* Bugfix: Fixes another CSRF vulnerability in tp settings dialog (Thanks to LVT-tholv2k for reporting)
+
+= 9.0.5 (26.11.2023) =
+* Bugfix: Fixed a Cross Site Request Forgery (CSRF) vulnerability in [tp_bibtex] shortcode (Thanks to LVT-tholv2k for reporting)
+* Bugfix: Fixed Cross Site Request Forgery (CSRF) vulnerabilities in teachPress admin screens (Thanks to LVT-tholv2k for reporting)
+* Bugfix: Return proper string value in filter hook handler. (Thanks to Tobias Bäthge) (#242)
+
+= 9.0.4 (24.07.2023) = 
+* Changed: Introduce using of target=blank for edit publication links; Unused parameters from edit links removed
+
+= 9.0.3 (21.06.2023) =
+* New: [tpcite],[tpref] Citations with the same key can be grouped, which means a bibtex-like citation with one unique id = one ref instead of one cite = one ref will be generated (#226, #233) (Thanks to Samuel Thiriot)
+* Bugfix: Fixed a french translation (Thanks to Samuel Thiriot)
+* Bugfix: Fixed a security vulnerability in ajax callbacks (Thanks for reporting to Le Ngoc Anh)
+
+= 9.0.2 (17.06.2023) =
+* Bugifx: [tpcloud] hide_tags and show_tags_as="pulldown" are not working (#230)
+* Bugfix: Changed author format to 'dynamic' in auto-publish (Thanks to fabricebg) (#225)
+* Bugfix: Improved diacritic import (Thanks to fabricebg) (#212)
+
+= 9.0.1 (11.06.2023) =
+* Bugfix: Fix Class 'TP_Enrollments' not found error when managing custom met data (#228)
+* Bugfix: Fixed undefined variable warnings if images where used in publication lists
+* Bugfix: Fixed diacritic parsing (Thanks to fabricebg) (#212)
+
+= 9.0.0 (01.06.2023) =
+* Important: This version no longer contains the course module!
+* New: Automatic import over API (i.e. for zotero group bibliographies) (Thanks to fabricebg)
+* New: UI for publication imports improved
+* New: Crossref.org import added (Thanks to Johan Hattne)
+* New: Support for French diacritics in bibtex entries added (Thanks to fabricebg)
+* New: Sort order for backend publication overview can be switched between default, pub_id (ASC, DESC) and title (ASC, DESC)
+* New: Awards field for publications added (Thanks to Sven Mayer)
+* New: Canadian French localization added (Thanks to fabricebg)
+* New: Support for PlumX and Dimension badges in publication lists added
+* New: [tpcloud, tpsearch, tplist] user parameter can now handle user names (login name) (#202)
+* New: [tpcloud, tpsearch, tplist] new parameter "years_between" added
+* New: [tpcloud, tpsearch, tplist] new parameter "tag_name" added (#219)
+* Changed: Removed deprecated methods tp_admin_page_menu(), tp_date_shortcode(), get_tp_course(), get_tp_courses(), get_tp_course_free_places(), tp_is_user_subscribed()
+* Changed: Improved bibtex char conversion
+* Changed: PMIDs for Import over PubMed are now space separated instead of comma separated
+* Changed: course module removed
+* Bugfix: Fixed some navigation bugs in the backend
+
+= 8.1.11 (16.01.2023) =
+* Bugfix: Fix possible security issue in course system backend
+
+= 8.1.9 (16.01.2023) =
+* Bugfix: Security fix for CVE-2023-22704
+
+= 8.1.8 (08.11.2022) =
+* Bugfix: [tpcloud]: pulldown menu for tags doesn't work (#207)
+
+= 8.1.7 (23.08.2022) =
+* Bugfix: Fixed Warning: Undefined array key "" (#201)
+
+= 8.1.6 (17.08.2022) =
+* New. [tpcloud, tpsearch]: Custom select fields can now be displayed as filters out of the box! Example (field with the ID tp_meta_pub_lang): [tpsearch custom_filter="tp_meta_pub_lang" custom_filter_label="My Label"]
+* New: Flexible position of the search button for pub lists added
+* New: Display error messages why publications could not be imported or added
+
+= 8.1.5 (06.03.2022) =
+* Changed: Add comment field to field list in SQL statement
+* Bugfix: Bugfix: Call to a member function get_ref() on null
+* Bugfix: Fix undefined variable warning
+* Bugfix: Add issue as default field for new publication
+
+= 8.1.4 (08.02.2022) =
+* Bugfix: Fix a variable declaration to block-scoped in teachpress_pub_showhide()
+
+= 8.1.3 (07.02.2022) =
+* New: Accept several tgid as $_GET input for a publication list (#191)
+
+= 8.1.2 (30.01.2022) = 
+* New: Issue is available as new field for journals
+* Changed: New style of volume/number/issue fields in publication entries. We switch from 8(3) to vol. 8, no. 3
+* Changed: Show date instead of year in publication import if it's available
+* Bugfix: Fix some problems with pagination and losing filter values in the backend publications overview
+* Note: Considering that 99,9% of all users using the publication management only, I've decided to split the course system from the publication management during this year. So teachPress will be a publication management only plugin in future.
+
+= 8.1.1 (23.01.2022) = 
+* New: Consider annote fields in the bibtex import and save it as comments
+* Changed: Increase max size for bibtex keys from 50 to 100 chars
+* Changed: Larger input fields for series, bibtex_key, crossref
+* Bugfix: Set ROW_FORMAT=DYNAMIC for the tables teachpress_pub, teachpress_author, teachpress_tags during installation to fix installation problems
+
+= 8.1.0 (29.11.2021) = 
+* New: Bookmarks can be added/deleted to all users without restriction (#181)
+* New: Publication type added: working paper (#184)
+* New: Sort options for show authors screen added
+* New: Occurence = 0 filter for authors and tags screen added
+* Changed: Load plugins language files first instead of files from WP languages directory (#189)
+* Changed: Using slimselect for tag selection in add/edit publication screens
+* Changed: Using slimselect for bookmark selection in add/edit publication screens
+* Changed: Add style info for close buttons to publication templates
+* Changed: Add version info to publication template css
+* Bugfix: Add font-size for abstracts and adjust font-sizes (#177)
+* Bugfix: Fix display issue for bibtex entries in publication lists (#177)
+* Bugfix: Fix escaping of special bibtex characters (#187) (Thanks to Lars Reimann)
+* Bugfix: Add textquoteright and textquoteleft to bibtex conversion (#179)
+* Bugfix: Missing "&" conversion while exporting to bibtex (#186)
+* Bugfix: Fix some missing char conversions for bibtex field values in get_single_publication_bibtex()
+* Bugfix: Fix items per page option in show authors screen (#190)
+* Bugfix: Fix a date detection error in pubmed import
 
 = 8.0.2 (31.08.2021) = 
 * Changed: Don't longer use full table select for count queries in TP_Publications::get_publications()

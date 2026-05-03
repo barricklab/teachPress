@@ -20,10 +20,11 @@
  *      @type string container_suffix  The optional suffix from the shortcode container 
  *      @type string mode              top or bottom, default: top
  * }
+ * @param boolean $echo     Print directly (true) or not (false), default: false
  * @return string
  * @since 5.0.0
 */
-function tp_page_menu ($atts) {
+function tp_page_menu ($atts, $echo = false) {
     $atts = shortcode_atts(array(
        'number_entries'     => 0,
        'entries_per_page'   => 50,
@@ -57,31 +58,41 @@ function tp_page_menu ($atts) {
     }
     
     // Defaults
-    $page_input = ' <input name="' . $limit_name . '" type="text" size="2" value="' .  $current_page . '" style="text-align:center;" /> ' . __('of','teachpress') . ' ' . $num_pages . ' ';
-    $entries = '<span class="displaying-num">' . $number_entries . ' ' . __('entries','teachpress') . '</span> ';
+    $page_input = ' <input name="' . $limit_name . '" type="text" size="2" value="' .  $current_page . '" style="text-align:center;" /> ' . esc_html__('of','teachpress') . ' ' . $num_pages . ' ';
+    $entries = '<span class="displaying-num">' . $number_entries . ' ' . esc_html__('entries','teachpress') . '</span> ';
     $back_links = '<a class="page-numbers button disabled">&laquo;</a> <a class="page-numbers button disabled">&lsaquo;</a> ';
     $next_links = '<a class="page-numbers button disabled">&rsaquo;</a> <a class="page-numbers button disabled">&raquo;</a> ';
 
     // first page / previous page
     if ( $entry_limit != 0 ) {
-        $first_page = '<a href="' . $page_link . '=1&amp;' . $atts['link_attributes'] . '" title="' . __('first page','teachpress') . '" class="page-numbers button">&laquo;</a>';
-        $prev_page = ' <a href="' . $page_link . '=' . ($current_page - 1) . '&amp;' . $atts['link_attributes'] . '" title="' . __('previous page','teachpress') . '" class="page-numbers button">&lsaquo;</a> ';
+        $first_page = '<a href="' . $page_link . '=1&amp;' . $atts['link_attributes'] . '" title="' . esc_html__('first page','teachpress') . '" class="page-numbers button">&laquo;</a>';
+        $prev_page = ' <a href="' . $page_link . '=' . ($current_page - 1) . '&amp;' . $atts['link_attributes'] . '" title="' . esc_html__('previous page','teachpress') . '" class="page-numbers button">&lsaquo;</a> ';
         $back_links = $first_page . $prev_page;
     }
 
     // next page/ last page
     if ( ( $entry_limit + $entries_per_page ) <= ($number_entries)) { 
-        $next_page = '<a href="' . $page_link . '=' . ($current_page + 1) . '&amp;' . $atts['link_attributes'] . '" title="' . __('next page','teachpress') . '" class="page-numbers button">&rsaquo;</a>';
-        $last_page = ' <a href="' . $page_link . '=' . $num_pages . '&amp;' . $atts['link_attributes'] . '" title="' . __('last page','teachpress') . '" class="page-numbers button">&raquo;</a> ';
+        $next_page = '<a href="' . $page_link . '=' . ($current_page + 1) . '&amp;' . $atts['link_attributes'] . '" title="' . esc_html__('next page','teachpress') . '" class="page-numbers button">&rsaquo;</a>';
+        $last_page = ' <a href="' . $page_link . '=' . $num_pages . '&amp;' . $atts['link_attributes'] . '" title="' . esc_html__('last page','teachpress') . '" class="page-numbers button">&raquo;</a> ';
         $next_links = $next_page . $last_page;
     }
 
     // return
     if ($atts['mode'] === 'top') {
-        return $atts['before'] . '<div class="' . $atts['class'] . '">' . $entries . $back_links . $page_input . $next_links . '</div>' . $atts['after'];
+        $r = $atts['before'] . '<div class="' . $atts['class'] . '">' . $entries . $back_links . $page_input . $next_links . '</div>' . $atts['after'];
+    }
+    else {
+        $r = $atts['before'] . '<div class="' . $atts['class'] . '">' . $entries . $back_links . $current_page . ' ' . esc_html__('of','teachpress') . ' ' . $num_pages . ' ' . $next_links . '</div>' . $atts['after'];
     }
     
-    return $atts['before'] . '<div class="' . $atts['class'] . '">' . $entries . $back_links . $current_page . ' ' . __('of','teachpress') . ' ' . $num_pages . ' ' . $next_links . '</div>' . $atts['after'];
+    // Print directly
+    if ( $echo === true ) {
+        echo $r;
+        return;
+    }
+
+    return $r;
+    
 
 }
 
@@ -178,77 +189,76 @@ function sort_tp_publication_type_options ($a, $b) {
 }
 
 /**
- * Get the array structure for a parameter
- * @param string $type  --> values: course_array, publication_array
- * @return array 
+ * Get award types
+ * @param string $selected  --> 
+ * @return string
+ * @since 9.0.0
  */
-function get_tp_var_types($type) {
-    if ( $type == 'course_array' ) {
-        $ret = array( 
-            'course_id'         => '',
-            'name'              => '',
-            'type'              => '',
-            'room'              => '',
-            'lecturer'          => '',
-            'date'              => '',
-            'places'            => '',
-            'start'             => '',
-            'end'               => '',
-            'semester'          => '',
-            'comment'           => '',
-            'rel_page'          => '',
-            'parent'            => '',
-            'visible'           => '',
-            'waitinglist'       => '',
-            'image_url'         => '',
-            'strict_signup'     => '',
-            'use_capabilities'   => '');
+function get_tp_award_options ($selected) {
+    global $tp_awards;
+    $award = '';
+    $pub_awards = $tp_awards->get();
+    // usort($pub_awards, 'sort_tp_publication_award_options');
+    foreach ( $pub_awards as $row ) {
+        $title = $row['i18n_singular'];
+        $current = ( $row['award_slug'] == $selected && $selected != '' ) ? 'selected="selected"' : '';
+        $award = $award . '<option value="' . $row['award_slug'] . '" ' . $current . '>' . $title . '</option>';  
     }
-    if ( $type == 'publication_array' ) {
-        $ret = array( 
-            'pub_id'            => '',
-            'title'             => '',
-            'type'              => '',
-            'bibtex'            => '',
-            'author'            => '',
-            'editor'            => '',
-            'isbn'              => '',
-            'url'               => '',
-            'date'              => '',
-            'urldate'           => '',
-            'booktitle'         => '',
-            'issuetitle'        => '',
-            'journal'           => '',
-            'volume'            => '',
-            'number'            => '',
-            'pages'             => '',
-            'publisher'         => '',
-            'address'           => '',
-            'edition'           => '',
-            'chapter'           => '',
-            'institution'       => '',
-            'organization'      => '',
-            'school'            => '',
-            'series'            => '',
-            'crossref'          => '',
-            'abstract'          => '',
-            'howpublished'      => '',
-            'key'               => '',
-            'techtype'          => '',
-            'comment'           => '',
-            'note'              => '',
-            'image_url'         => '',
-            'image_target'      => '',
-            'image_ext'         => '',
-            'doi'               => '',
-            'is_isbn'           => '',
-            'rel_page'          => '',
-            'status'            => '',
-            'added'             => '',
-            'modified'          => '',
-            'use_capabilities'  => '',
-            'import_id'         => 0);
-    }
+   return $award;
+}
+
+
+/**
+ * Returns the default structure for a publication array
+ * @return array 
+ * @since 9.0.0
+ */
+function tp_get_default_structure() {
+    $ret = array( 
+        'pub_id'            => '',
+        'bibtex'            => '',
+        'type'              => '',
+        'award'             => '',
+        'title'             => '',
+        'author'            => '',
+        'editor'            => '',
+        'isbn'              => '',
+        'url'               => '',
+        'date'              => '',
+        'urldate'           => '',
+        'booktitle'         => '',
+        'issuetitle'        => '',
+        'journal'           => '',
+        'issue'             => '',
+        'volume'            => '',
+        'number'            => '',
+        'pages'             => '',
+        'publisher'         => '',
+        'address'           => '',
+        'edition'           => '',
+        'chapter'           => '',
+        'institution'       => '',
+        'organization'      => '',
+        'school'            => '',
+        'series'            => '',
+        'crossref'          => '',
+        'abstract'          => '',
+        'howpublished'      => '',
+        'key'               => '',
+        'techtype'          => '',
+        'comment'           => '',
+        'note'              => '',
+        'image_url'         => '',
+        'image_target'      => '',
+        'image_ext'         => '',
+        'doi'               => '',
+        'is_isbn'           => '',
+        'rel_page'          => '',
+        'status'            => '',
+        'added'             => '',
+        'modified'          => '',
+        'use_capabilities'  => '',
+        'import_id'         => 0);
     return $ret;
 }
 
@@ -286,6 +296,16 @@ function tp_get_memory_usage () {
 }
 
 /**
+ * Sanitizes a key name or a comma separated list of key names. Allowed chars: a-z A-Z 0-9 _ - , 
+ * @param string $tag_name
+ * @since 9.0.13
+ */
+function tp_sanitize_key ($tag_name) {
+   $safe_tag = strtolower( preg_replace( '/[^a-zA-Z0-9_,\-]/', '', $tag_name ) );
+   return $safe_tag;
+}
+
+/**
  * Converts a file size in bytes into kB, MB or GB
  * @param int $bytes
  * @return string
@@ -315,18 +335,29 @@ function tp_convert_file_size ($bytes) {
 }
 
 /**
- * Converts an array in a comma separated string
+ * Converts an input(array or comma separated string) in a secured comma separated string
+ * 
+ * The method uses intval, floatval or htmlspecialchars for each element depending on the given
+ * $type (string, int, float)
  * @param array|string $input
  * @param string $type  The type of the elements: string, int, float
  * @return string
  * @since 8.0.0
  */
-function tp_convert_array_to_string($input, $type = 'string') {
-    if (is_array($input) ) {
+function tp_convert_input_to_string($input, $type = 'string') {
+    // if we have an array already
+    if ( is_array($input) ) {
         $array = $input;
     }
     else {
-        $array[] = $input;
+        // If we have a comma separated string
+        if ( strpos ($input, ',') !== false ) {
+            $array = explode(',',$input);
+        }
+        // If we don't know what we have, so we create an array
+        else {
+            $array[] = $input;
+        }
     }
 
     $max = count( $array );
@@ -344,7 +375,7 @@ function tp_convert_array_to_string($input, $type = 'string') {
             default:
                 $element = htmlspecialchars($array[$i]);
         endswitch;
-        $string = ($string === '') ? $element : $string . ',' .$element;
+        $string = ( $string === '' ) ? $element : $string . ',' . $element;
     }
     return $string;
 }
@@ -360,30 +391,9 @@ function tp_write_data_for_tinymce () {
         return;
     }
     
-    // List of courses
-    $course_list = array();
-    $course_list[] = array( 'text' => '=== SELECT ===' , 'value' => 0 );
-    $semester = get_tp_options('semester', '`setting_id` DESC');
-    foreach ( $semester as $row ) {
-        $courses = TP_Courses::get_courses( array('parent' => 0, 'semester' => $row->value) );
-        foreach ($courses as $course) {
-            $course_list[] = array( 'text' => $course->name . ' (' . $course->semester . ')' , 'value' => $course->course_id );
-        }
-        if ( count($courses) > 0 ) {
-            $course_list[] = array( 'text' => '====================' , 'value' => 0 );
-        }
-    }
-    
-    // List of semester/term
-    $semester_list = array();
-    $semester_list[] = array( 'text' => __('Default','teachpress') , 'value' => '' );
-    foreach ($semester as $sem) { 
-        $semester_list[] = array( 'text' => stripslashes($sem->value) , 'value' => stripslashes($sem->value) );
-    }
-    
     // List of publication users
     $pub_user_list = array();
-    $pub_user_list[] = array( 'text' => __('All','teachpress') , 'value' => '' );
+    $pub_user_list[] = array( 'text' => esc_html__('All','teachpress') , 'value' => '' );
     $pub_users = TP_Publications::get_pub_users();
     foreach ($pub_users as $row) { 
         $user_data = get_userdata($row->user);
@@ -394,7 +404,7 @@ function tp_write_data_for_tinymce () {
     
     // List of publication tags
     $pub_tag_list = array();
-    $pub_tag_list[] = array( 'text' => __('All','teachpress'), 'value' => null );
+    $pub_tag_list[] = array( 'text' => esc_html__('All','teachpress'), 'value' => null );
     $pub_tags = TP_Tags::get_tags(array( 'group_by' => true ));
     foreach($pub_tags as $pub_tag){
 	$pub_tag_list[] = array( 'text' => $pub_tag->name, 'value' => intval($pub_tag->tag_id) );
@@ -421,17 +431,14 @@ function tp_write_data_for_tinymce () {
     // Write javascript
     ?>
     <script type="text/javascript">
-        var teachpress_courses = <?php echo json_encode($course_list); ?>;
-        var teachpress_semester = <?php echo json_encode($semester_list); ?>;
         var teachpress_pub_user = <?php echo json_encode($pub_user_list); ?>;
         var teachpress_pub_types = <?php echo json_encode($pub_type_list); ?>;
         var teachpress_pub_tags = <?php echo json_encode($pub_tag_list) ?>;
         var teachpress_pub_templates = <?php echo json_encode($pub_templates_list); ?>;
-        var teachpress_editor_url = '<?php echo admin_url( 'admin-ajax.php' ) . '?action=teachpressdocman&post_id=' . $post_id; ?>';
+        var teachpress_editor_url = '<?php echo admin_url( 'admin-ajax.php' ) . '?action=teachpressdocman&post_id=' . intval($post_id); ?>';
         var teachpress_cookie_path = '<?php echo SITECOOKIEPATH; ?>';
         var teachpress_file_link_css_class = '<?php echo TEACHPRESS_FILE_LINK_CSS_CLASS; ?>';
-        var teachpress_course_module = <?php if (TEACHPRESS_COURSE_MODULE === true) { echo 'true'; } else { echo 'false'; } ?>;
-        var teachpress_publication_module = <?php if (TEACHPRESS_PUBLICATION_MODULE === true) { echo 'true'; } else { echo 'false'; } ?>;
+        var teachpress_publication_module = true;
     </script>
     <?php
 }
